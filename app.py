@@ -27,8 +27,10 @@ if not df.empty:
         # Création d'une boîte visuelle pour chaque produit
         st.markdown('<div class="product-card" style="border:1px solid #ddd; padding:15px; border-radius:10px; margin-bottom:10px;">', unsafe_allow_html=True)
         
-        # Récupération sécurisée du lien de la photo
+        # Récupération des colonnes avec leurs noms exacts
         lien_photo = str(row['Photo produit']).strip() if 'Photo produit' in row else ""
+        nom_produit = str(row['Denomination']).strip() if 'Denomination' in row else "Produit sans nom"
+        fmt = str(row['Litre / Gramme']).strip() if 'Litre / Gramme' in row else "N/A"
         
         # Affichage de l'image ou d'une icône par défaut
         if lien_photo and lien_photo.startswith('http') and lien_photo != 'nan':
@@ -37,12 +39,9 @@ if not df.empty:
             st.markdown("<h1 style='text-align: center; font-size: 50px;'>🛍️</h1>", unsafe_allow_html=True)
             
         # Nom du produit
-        st.markdown(f"### {row['Denomination']}")
+        st.markdown(f"### {nom_produit}")
         
-        # Format (Litre / Gramme)
-        fmt = row['Litre / Gramme'] if 'Litre / Gramme' in row else "N/A"
-        
-        # Gestion de la quantité en stock avec le 'é' accentué exact de ton fichier
+        # Gestion de la quantité en stock (avec le é accentué de ton CSV)
         try: 
             max_stock = int(float(str(row['Quantité']).replace(' ', '')))
         except: 
@@ -68,23 +67,23 @@ if not df.empty:
             # Sélecteur de quantité numérique
             st.markdown("<p style='font-size: 12px; color: gray; margin-bottom:0px;'>Quantité désirée :</p>", unsafe_allow_html=True)
             quantite = st.number_input(
-                f"Qté {row['Denomination']}", 
+                f"Qté {nom_produit}", 
                 min_value=0, 
                 max_value=max_stock, 
-                value=st.session_state.panier.get(row['Denomination'], {}).get('quantite', 0), 
+                value=st.session_state.panier.get(nom_produit, {}).get('quantite', 0), 
                 key=f"prod_{index}", 
                 label_visibility="collapsed"
             )
         
         # Enregistrement dynamique dans le panier
         if quantite > 0:
-            st.session_state.panier[row['Denomination']] = {
+            st.session_state.panier[nom_produit] = {
                 "quantite": quantite, 
                 "prix": p_promo, 
                 "economie": (p_init - p_promo) * quantite if p_init > 0 else 0
             }
-        elif row['Denomination'] in st.session_state.panier:
-            del st.session_state.panier[row['Denomination']]
+        elif nom_produit in st.session_state.panier:
+            del st.session_state.panier[nom_produit]
             
         st.markdown('</div>', unsafe_allow_html=True)
 
