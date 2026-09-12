@@ -13,7 +13,7 @@ st.title("Les Bons Plans de Sarah 🛍️")
 # --- 1. Chargement et Nettoyage Automatique des Données ---
 try:
     # Lecture du fichier donnees.csv séparé par des tabulations (\t)
-    df = pd.read_csv("donnees.csv", sep="\t")
+    df = pd.read_csv("donnees.csv", sep=None, engine='python')
     
     # Supprime les espaces ou tabulations invisibles autour du nom des colonnes
     df.columns = df.columns.str.strip()
