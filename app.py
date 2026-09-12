@@ -1,59 +1,99 @@
-# --- 1. Chargement sécurisé avec le bon séparateur ---
-df = pd.read_csv("donnees.csv", sep="\t")
+import streamlit as st
+import pandas as pd
 
-# Nettoyage automatique des espaces invisibles dans les titres
-df.columns = df.columns.str.strip()
+# Configurer la page pour un rendu propre
+st.set_page_config(page_title="Les Bons Plans de Sarah", page_icon="🛍️", layout="centered")
 
-# --- 2. Boucle d'affichage sur tes produits ---
-for index, row in df.iterrows():
-    # Création d'une boîte pour chaque produit (Adapter selon ton style CSS si besoin)
-    st.markdown('<div class="product-card">', unsafe_allow_html=True)
+# --- Initialisation du panier en session_state ---
+if "panier" not in st.session_state:
+    st.session_state.panier = {}
+
+st.title("Les Bons Plans de Sarah 🛍️")
+
+# --- 1. Chargement et Nettoyage Automatique des Données ---
+try:
+    # Lecture du fichier donnees.csv séparé par des tabulations (\t)
+    df = pd.read_csv("donnees.csv", sep="\t")
     
-    # Correction : On cherche 'Photo produit' avec le nom exact de ton CSV
-    lien_photo = str(row['Photo produit']).strip() if 'Photo produit' in row else ""
-    
-    # Affichage de la photo si le lien commence par http
-    if lien_photo and lien_photo.startswith('http') and lien_photo != 'nan':
-        st.image(lien_photo, use_container_width=True)
-    else:
-        # Icône par défaut si pas d'image
-        st.markdown(f"<h1 style='text-align: center; font-size: 50px;'>🛍️</h1>", unsafe_allow_html=True)
+    # Supprime les espaces ou tabulations invisibles autour du nom des colonnes
+    df.columns = df.columns.str.strip()
+except Exception as e:
+    st.error(f"Erreur lors de la lecture du fichier de données : {e}")
+    df = pd.DataFrame()
+
+# --- 2. Boucle d'affichage dynamique des produits ---
+if not df.empty:
+    for index, row in df.iterrows():
+        # Création d'une boîte visuelle pour chaque produit
+        st.markdown('<div class="product-card" style="border:1px solid #ddd; padding:15px; border-radius:10px; margin-bottom:10px;">', unsafe_allow_html=True)
         
-    st.markdown(f"### {row['Denomination']}")
-    
-    # Gestion du format
-    fmt = row['Litre / Gramme'] if 'Litre / Gramme' in row else "N/A"
-    
-    # Correction : Prise en compte du 'é' accentué pour 'Quantité'
-    try: 
-        max_stock = int(float(str(row['Quantité']).replace(' ', '')))
-    except: 
-        max_stock = 0
+        # Récupération sécurisée du lien de la photo
+        lien_photo = str(row['Photo produit']).strip() if 'Photo produit' in row else ""
         
-    if max_stock <= 0:
-        st.markdown("<p style='color: red; font-size: 14px;'>❌ <b>Rupture de stock !</b></p>", unsafe_allow_html=True)
-        quantite = 0
-    else:
-        st.markdown(f"<p style='color: #8B5A6F; font-size: 14px;'>Format : {fmt} | Stock : <b>{max_stock}</b></p>", unsafe_allow_html=True)
-        
-        # Gestion et calcul des prix
-        try:
-            p_init = float(str(row['Prix initial']).replace('€', '').replace(',', '.').replace(' ', '').strip())
-            p_promo = float(str(row['Prix promo']).replace('€', '').replace(',', '.').replace(' ', '').strip())
-            remise = int((1 - (p_promo / p_init)) * 100) if p_init > 0 else 0
-            st.markdown(f"<span class='promo-badge'>-{remise}%</span> <b style='font-size: 22px; color: #D2143A;'>{p_promo:.2f} €</b> <span style='text-decoration: line-through; color: #C0A9B0;'>{p_init:.2f} €</span>", unsafe_allow_html=True)
-        except:
-            p_pr = str(row['Prix promo']).replace(' ', '')
-            st.markdown(f"<h3 style='color: #D2143A;'>{p_pr}</h3>", unsafe_allow_html=True)
-            p_promo, p_init = 0, 0
+        # Affichage de l'image ou d'une icône par défaut
+        if lien_photo and lien_photo.startswith('http') and lien_photo != 'nan':
+            st.image(lien_photo, use_container_width=True)
+        else:
+            st.markdown("<h1 style='text-align: center; font-size: 50px;'>🛍️</h1>", unsafe_allow_html=True)
             
-        st.markdown("<p style='font-size: 12px; color: gray;'>Quantité :</p>", unsafe_allow_html=True)
-        quantite = st.number_input(f"Qté {row['Denomination']}", min_value=0, max_value=max_stock, value=st.session_state.panier.get(row['Denomination'], {}).get('quantite', 0), key=f"prod_{index}", label_visibility="collapsed")
-    
-    # Enregistrement dans le panier
-    if quantite > 0:
-        st.session_state.panier[row['Denomination']] = {"quantite": quantite, "prix": p_promo, "economie": (p_init - p_promo) * quantite if p_init > 0 else 0}
-    elif row['Denomination'] in st.session_state.panier:
-        del st.session_state.panier[row['Denomination']]
+        # Nom du produit
+        st.markdown(f"### {row['Denomination']}")
         
-    st.markdown('</div>', unsafe_allow_html=True)
+        # Format (Litre / Gramme)
+        fmt = row['Litre / Gramme'] if 'Litre / Gramme' in row else "N/A"
+        
+        # Gestion de la quantité en stock avec le 'é' accentué exact de ton fichier
+        try: 
+            max_stock = int(float(str(row['Quantité']).replace(' ', '')))
+        except: 
+            max_stock = 0
+            
+        if max_stock <= 0:
+            st.markdown("<p style='color: red; font-size: 14px;'>❌ <b>Rupture de stock !</b></p>", unsafe_allow_html=True)
+            quantite = 0
+        else:
+            st.markdown(f"<p style='color: #8B5A6F; font-size: 14px;'>Format : {fmt} | Stock : <b>{max_stock}</b></p>", unsafe_allow_html=True)
+            
+            # Gestion et calcul des prix et remises
+            try:
+                p_init = float(str(row['Prix initial']).replace('€', '').replace(',', '.').replace(' ', '').strip())
+                p_promo = float(str(row['Prix promo']).replace('€', '').replace(',', '.').replace(' ', '').strip())
+                remise = int((1 - (p_promo / p_init)) * 100) if p_init > 0 else 0
+                st.markdown(f"<span style='background-color:#D2143A; color:white; padding:2px 6px; border-radius:5px; font-size:14px; margin-right:5px;'>-{remise}%</span> <b style='font-size: 22px; color: #D2143A;'>{p_promo:.2f} €</b> <span style='text-decoration: line-through; color: #C0A9B0;'>{p_init:.2f} €</span>", unsafe_allow_html=True)
+            except:
+                p_pr = str(row['Prix promo']).replace(' ', '')
+                st.markdown(f"<h3 style='color: #D2143A;'>{p_pr}</h3>", unsafe_allow_html=True)
+                p_promo, p_init = 0, 0
+                
+            # Sélecteur de quantité numérique
+            st.markdown("<p style='font-size: 12px; color: gray; margin-bottom:0px;'>Quantité désirée :</p>", unsafe_allow_html=True)
+            quantite = st.number_input(
+                f"Qté {row['Denomination']}", 
+                min_value=0, 
+                max_value=max_stock, 
+                value=st.session_state.panier.get(row['Denomination'], {}).get('quantite', 0), 
+                key=f"prod_{index}", 
+                label_visibility="collapsed"
+            )
+        
+        # Enregistrement dynamique dans le panier
+        if quantite > 0:
+            st.session_state.panier[row['Denomination']] = {
+                "quantite": quantite, 
+                "prix": p_promo, 
+                "economie": (p_init - p_promo) * quantite if p_init > 0 else 0
+            }
+        elif row['Denomination'] in st.session_state.panier:
+            del st.session_state.panier[row['Denomination']]
+            
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# --- 3. Barre latérale : Gestion du Panier ---
+if st.session_state.panier:
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("## 🛒 Votre Panier Rose")
+    total_facture = 0.0
+    for prod_name, details in st.session_state.panier.items():
+        st.sidebar.write(f"**{prod_name}** x{details['quantite']} : {details['prix'] * details['quantite']:.2f} €")
+        total_facture += details['prix'] * details['quantite']
+    st.sidebar.markdown(f"### Total : {total_facture:.2f} €")
