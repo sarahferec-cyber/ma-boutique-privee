@@ -1,3 +1,8 @@
+import streamlit as st
+import pandas as pd
+import requests
+import io
+
 # 1. Configuration de la page style Amazon Mobile
 st.set_page_config(page_title="Mes Bons Plans 🌸", page_icon="🛍️", layout="wide")
 
@@ -107,7 +112,7 @@ for index, row in df_filtre.reset_index().iterrows():
         elif "animalerie" in cat_nom: icon = "🐱"
         else: icon = "🛍️"
             
-        lien_photo = str(row['Photo']).strip() if 'Photo' in row else ""
+        lien_photo = str(row['Photo produit']).strip() if 'Photo produit' in row else ""
         if lien_photo and lien_photo.startswith('http') and lien_photo != 'nan':
             st.image(lien_photo, use_container_width=True)
         else:
