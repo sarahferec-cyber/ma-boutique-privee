@@ -10,27 +10,58 @@ if "panier" not in st.session_state:
 
 st.title("Les Bons Plans de Sarah 🛍️")
 
-# --- 1. Chargement et Nettoyage Automatique des Données ---
+# --- 1. Chargement et Découpage Intelligent des Données ---
 try:
-    # Lecture du fichier donnees.csv séparé par des tabulations (\t)
-    df = pd.read_csv("donnees.csv", sep=None, engine='python')
+    # Lecture brute du fichier pour éviter les bugs de structure
+    df_raw = pd.read_csv("donnees.csv", sep="§", engine="python", header=None)
     
-    # Supprime les espaces ou tabulations invisibles autour du nom des colonnes
+    # Reconstruction propre du tableau
+    lignes_propres = []
+    for idx, row in df_raw.iterrows():
+        texte_ligne = str(row.iloc[0])
+        # On découpe par tabulation, point-virgule ou virgule
+        if "\t" in texte_ligne:
+            elements = texte_ligne.split("\t")
+        elif ";" in texte_ligne:
+            elements = texte_ligne.split(";")
+        else:
+            elements = texte_ligne.split(",")
+        lignes_propres.append([el.strip() for el in elements])
+        
+    # Création du DataFrame final
+    titres = lignes_propres[0]
+    donnees = lignes_propres[1:]
+    
+    # Ajustement si les lignes n'ont pas la même taille
+    max_cols = len(titres)
+    donnees_ajustees = [l + [""] * (max_cols - len(l)) for l in donnees]
+    
+    df = pd.DataFrame(donnees_ajustees, columns=titres)
     df.columns = df.columns.str.strip()
 except Exception as e:
-    st.error(f"Erreur lors de la lecture du fichier de données : {e}")
+    st.error(f"Erreur lors du décodage du fichier : {e}")
     df = pd.DataFrame()
 
 # --- 2. Boucle d'affichage dynamique des produits ---
 if not df.empty:
     for index, row in df.iterrows():
-        # Création d'une boîte visuelle pour chaque produit
-        st.markdown('<div class="product-card" style="border:1px solid #ddd; padding:15px; border-radius:10px; margin-bottom:10px;">', unsafe_allow_html=True)
+        # Trouver les colonnes sans être bloqué par les noms exacts
+        col_photo = [c for c in df.columns if "photo" in c.lower()]
+        col_nom = [c for c in df.columns if "denom" in c.lower() or "nom" in c.lower()]
+        col_fmt = [c for c in df.columns if "litr" in c.lower() or "gram" in c.lower() or "format" in c.lower()]
+        col_stock = [c for c in df.columns if "quant" in c.lower() or "stock" in c.lower()]
+        col_pinit = [c for c in df.columns if "initial" in c.lower() or "avant" in c.lower()]
+        col_ppromo = [c for c in df.columns if "promo" in c.lower() or "apres" in c.lower()]
         
-        # Récupération des colonnes avec leurs noms exacts
-        lien_photo = str(row['Photo produit']).strip() if 'Photo produit' in row else ""
-        nom_produit = str(row['Denomination']).strip() if 'Denomination' in row else "Produit sans nom"
-        fmt = str(row['Litre / Gramme']).strip() if 'Litre / Gramme' in row else "N/A"
+        lien_photo = str(row[col_photo[0]]).strip() if col_photo else ""
+        nom_produit = str(row[col_nom[0]]).strip() if col_nom else "Produit sans nom"
+        fmt = str(row[col_fmt[0]]).strip() if col_fmt else "N/A"
+        
+        # Ignorer les lignes vides ou de fin de fichier
+        if nom_produit == "nan" or nom_produit == "" or "photo produit" in nom_produit.lower():
+            continue
+            
+        st.markdown('<div class="product-card" style="border:1px solid #ddd; padding:15px; border-radius:10px; margin-bottom:10px;">', unsafe_allow_html=True)
         
         # Affichage de l'image ou d'une icône par défaut
         if lien_photo and lien_photo.startswith('http') and lien_photo != 'nan':
@@ -38,13 +69,13 @@ if not df.empty:
         else:
             st.markdown("<h1 style='text-align: center; font-size: 50px;'>🛍️</h1>", unsafe_allow_html=True)
             
-        # Nom du produit
         st.markdown(f"### {nom_produit}")
         
-        # Gestion de la quantité en stock (avec le é accentué de ton CSV)
-        try: 
-            max_stock = int(float(str(row['Quantité']).replace(' ', '')))
-        except: 
+        # Gestion du stock
+        try:
+            val_stock = str(row[col_stock[0]]) if col_stock else "0"
+            max_stock = int(float(val_stock.replace(' ', '')))
+        except:
             max_stock = 0
             
         if max_stock <= 0:
@@ -53,18 +84,19 @@ if not df.empty:
         else:
             st.markdown(f"<p style='color: #8B5A6F; font-size: 14px;'>Format : {fmt} | Stock : <b>{max_stock}</b></p>", unsafe_allow_html=True)
             
-            # Gestion et calcul des prix et remises
+            # Gestion et calcul des prix
             try:
-                p_init = float(str(row['Prix initial']).replace('€', '').replace(',', '.').replace(' ', '').strip())
-                p_promo = float(str(row['Prix promo']).replace('€', '').replace(',', '.').replace(' ', '').strip())
+                val_init = str(row[col_pinit[0]]) if col_pinit else "0"
+                val_promo = str(row[col_ppromo[0]]) if col_ppromo else "0"
+                p_init = float(val_init.replace('€', '').replace(',', '.').replace(' ', '').strip())
+                p_promo = float(val_promo.replace('€', '').replace(',', '.').replace(' ', '').strip())
                 remise = int((1 - (p_promo / p_init)) * 100) if p_init > 0 else 0
                 st.markdown(f"<span style='background-color:#D2143A; color:white; padding:2px 6px; border-radius:5px; font-size:14px; margin-right:5px;'>-{remise}%</span> <b style='font-size: 22px; color: #D2143A;'>{p_promo:.2f} €</b> <span style='text-decoration: line-through; color: #C0A9B0;'>{p_init:.2f} €</span>", unsafe_allow_html=True)
             except:
-                p_pr = str(row['Prix promo']).replace(' ', '')
-                st.markdown(f"<h3 style='color: #D2143A;'>{p_pr}</h3>", unsafe_allow_html=True)
+                val_promo = str(row[col_ppromo[0]]) if col_ppromo else "0"
+                st.markdown(f"<h3 style='color: #D2143A;'>{val_promo}</h3>", unsafe_allow_html=True)
                 p_promo, p_init = 0, 0
                 
-            # Sélecteur de quantité numérique
             st.markdown("<p style='font-size: 12px; color: gray; margin-bottom:0px;'>Quantité désirée :</p>", unsafe_allow_html=True)
             quantite = st.number_input(
                 f"Qté {nom_produit}", 
@@ -75,7 +107,6 @@ if not df.empty:
                 label_visibility="collapsed"
             )
         
-        # Enregistrement dynamique dans le panier
         if quantite > 0:
             st.session_state.panier[nom_produit] = {
                 "quantite": quantite, 
