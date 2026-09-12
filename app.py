@@ -51,7 +51,7 @@ if st.sidebar.button("🚪 Se déconnecter"):
     st.session_state.utilisateur = ""
     st.rerun()
 
-URL_SHEETS = "https://docs.google.com/spreadsheets/d/1S9bjzHGdS-zTc_uQIqdgJqd5OMOMSrD5telEoPX6jhA/edit?usp=sharing"
+URL_SHEETS = "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing"
 URL_DISCORD = "https://discord.com"
 
 def load_clean_data():
