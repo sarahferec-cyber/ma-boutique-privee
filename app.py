@@ -11,7 +11,7 @@ if "panier" not in st.session_state:
 st.title("Les Bons Plans de Sarah 🛍️")
 
 # --- 1. Liaison Directe et Forcée avec ton Google Sheets ---
-URL_SHEETS = "https://google.com"
+URL_SHEETS = "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing"
 
 try:
     # Lecture du Google Sheets
