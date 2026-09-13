@@ -1,102 +1,181 @@
 import streamlit as st
 import pandas as pd
+import requests
+import io
 
-# Configurer la page pour un rendu propre
-st.set_page_config(page_title="Les Bons Plans de Sarah", page_icon="🛍️", layout="centered")
+# 1. Configuration de la page style Amazon Mobile
+st.set_page_config(page_title="Mes Bons Plans de Sarah 🌸", page_icon="🛍️", layout="wide")
 
-# --- Initialisation du panier ---
+st.markdown("""
+    <style>
+    .stApp { background-color: #FFF5F5; }
+    .product-card { padding: 20px; border-radius: 15px; border: 2px solid #FFD1D1; background-color: white; margin-bottom: 20px; text-align: center; }
+    .promo-badge { background-color: #FF69B4; color: white; padding: 3px 8px; font-weight: bold; border-radius: 20px; font-size: 13px; }
+    [data-testid="stSidebar"] { background-color: #FFEAEF; border-right: 2px solid #FFD1D1; }
+    h1, h2, h3 { color: #C71585 !important; font-family: 'Poppins', sans-serif; }
+    .stButton>button { background-color: #FF69B4 !important; color: white !important; border-radius: 20px !important; font-weight: bold !important; width: 100%; }
+    </style>
+""", unsafe_allow_html=True)
+
+# 🔐 LISTE DES COMPTES AUTORISÉS
+COMPTES_AUTORISES = {
+    "sarah": "shopping2026",
+    "copine": "viprose",
+    "client1": "bonplan75"
+}
+
+if "connecte" not in st.session_state:
+    st.session_state.connecte = False
+if "utilisateur" not in st.session_state:
+    st.session_state.utilisateur = ""
+
+if not st.session_state.connecte:
+    st.title("🎀 Espace Privé : Le Dressing des Bons Plans 🌸")
+    with st.form("formulaire_connexion"):
+        identifiant = st.text_input("👤 Votre Identifiant :").strip().lower()
+        mot_de_passe = st.text_input("🔑 Votre Mot de passe :", type="password")
+        if st.form_submit_button("✨ Entrer dans la boutique"):
+            if identifiant in COMPTES_AUTORISES and COMPTES_AUTORISES[identifiant] == mot_de_passe:
+                st.session_state.connecte = True
+                st.session_state.utilisateur = identifiant
+                st.rerun()
+            else:
+                st.error("Identifiant ou mot de passe incorrect. ❌")
+    st.stop()
+
+st.title("🌸 Le Dressing des Bons Plans 🛍️")
+st.write(f"Coucou **{st.session_state.utilisateur.capitalize()}** !")
+
+if st.sidebar.button("🚪 Se déconnecter"):
+    st.session_state.connecte = False
+    st.session_state.utilisateur = ""
+    st.rerun()
+
+URL_SHEETS = "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing"
+URL_DISCORD = "https://discord.com"
+
+def load_clean_data():
+    try:
+        csv_url = URL_SHEETS.replace("/edit?usp=sharing", "/export?format=csv").replace("/edit", "/export?format=csv")
+        reponse = requests.get(csv_url)
+        reponse.encoding = 'utf-8'
+        data = pd.read_csv(io.StringIO(reponse.text), encoding="utf-8", engine="python", on_bad_lines='skip')
+        
+        # NETTOYAGE INTELLIGENT DES COLONNES (Supprime les espaces, minuscules forcées et vire les accents)
+        data.columns = [str(c).strip().lower() for c in data.columns]
+        data.columns = data.columns.str.replace('é', 'e').str.replace('è', 'e').str.replace('à', 'a')
+        
+        # Nettoyage des guillemets dans les textes
+        for col in data.select_dtypes(include=['object']).columns:
+            data[col] = data[col].astype(str).str.replace('"', '').str.strip()
+            
+        return data
+    except:
+        return pd.DataFrame()
+
+df = load_clean_data()
+
+if df.empty:
+    st.warning("Erreur de chargement des données Sheets...")
+    st.stop()
+
 if "panier" not in st.session_state:
     st.session_state.panier = {}
 
-st.title("Les Bons Plans de Sarah 🛍️")
+# Recherche adaptative des nouvelles colonnes nettoyées (sans majuscules ni accents)
+col_photo = 'photo produit' if 'photo produit' in df.columns else 'photo'
+col_nom = 'denomination' if 'denomination' in df.columns else 'denom'
+col_cat = 'categorie' if 'categorie' in df.columns else 'cat'
+col_fmt = 'litre / gramme' if 'litre / gramme' in df.columns else 'format'
+col_stock = 'quantite' if 'quantite' in df.columns else 'stock'
+col_pinit = 'prix initial' if 'prix initial' in df.columns else 'initial'
+col_ppromo = 'prix promo' if 'prix promo' in df.columns else 'promo'
 
-# --- 1. Liaison Directe et en Temps Réel avec ton Google Sheets ---
-# REMPLACE LE LIEN CI-DESSOUS PAR TON LIEN GOOGLE SHEETS MODIFIÉ (qui se termine par export?format=csv)
-URL_GOOGLE_SHEETS = "https://google.com"
+st.sidebar.markdown("## 🎀 Navigation")
+les_categories = list(df[col_cat].unique()) if col_cat in df.columns else []
+categories_menu = ["✨ Tous les rayons"] + [f"🌸 {str(cat).strip().capitalize()}" for cat in sorted(les_categories) if str(cat).lower() != 'nan' and str(cat).strip() != '']
+choix_cat_brut = st.sidebar.selectbox("Faites votre shopping par rayon :", categories_menu)
+choix_cat = choix_cat_brut.replace("🌸 ", "").strip().lower()
 
-try:
-    # Lecture automatique du Google Sheets partagé en format CSV standard
-    df = pd.read_csv(URL_GOOGLE_SHEETS)
-    df.columns = df.columns.str.strip()
-except Exception as e:
-    st.error(f"Impossible de se connecter au tableau Google Sheets. Vérifie le partage. Erreur : {e}")
-    df = pd.DataFrame()
+if choix_cat_brut == "✨ Tous les rayons":
+    df_filtre = df
+else:
+    df_filtre = df[df[col_cat].str.lower().str.strip() == choix_cat]
 
-# --- 2. Boucle d'affichage dynamique des produits ---
-if not df.empty:
-    for index, row in df.iterrows():
-        # Identification automatique des colonnes de ton Sheets
-        col_photo = next((c for c in df.columns if "photo" in c.lower()), "Photo produit")
-        col_nom = next((c for c in df.columns if "denom" in c.lower() or "nom" in c.lower()), "Denomination")
-        col_fmt = next((c for c in df.columns if "litr" in c.lower() or "gram" in c.lower() or "format" in c.lower()), "Litre / Gramme")
-        col_stock = next((c for c in df.columns if "quant" in c.lower() or "stock" in c.lower()), "Quantité")
-        col_pinit = next((c for c in df.columns if "initial" in c.lower() or "avant" in c.lower()), "Prix initial")
-        col_ppromo = next((c for c in df.columns if "promo" in c.lower() or "apres" in c.lower()), "Prix promo")
+st.subheader(f"💫 Sélection : {choix_cat_brut} ({len(df_filtre)} pépites)")
+cols = st.columns(3)
+
+for index, row in df_filtre.reset_index().iterrows():
+    nom_produit = str(row[col_nom]).strip() if col_nom in row else "Produit sans nom"
+    if nom_produit.lower() in ["nan", "", "denomination"]:
+        continue
         
-        # Extraction sécurisée des valeurs
-        lien_photo = str(row[col_photo]).strip() if col_photo in row.index else ""
-        nom_produit = str(row[col_nom]).strip() if col_nom in row.index else "Produit sans nom"
-        fmt = str(row[col_fmt]).strip() if col_fmt in row.index else "N/A"
-        
-        # Ignorer les lignes totalement vides du Sheets
-        if not nom_produit or nom_produit.lower() == "nan" or nom_produit == "Produit sans nom":
-            continue
+    with cols[index % 3]:
+        st.markdown('<div class="product-card">', unsafe_allow_html=True)
+        cat_nom = str(row[col_cat]).lower() if col_cat in row else ""
+        if "lessive" in cat_nom: icon = "🧺"
+        elif "hygiene" in cat_nom or "hygiène" in cat_nom: icon = "✨"
+        elif "entretien" in cat_nom: icon = "🧼"
+        elif "alimentaire" in cat_nom: icon = "🍬"
+        elif "animalerie" in cat_nom: icon = "🐱"
+        else: icon = "🛍️"
             
-        st.markdown('<div style="border:1px solid #ddd; padding:15px; border-radius:10px; margin-bottom:15px;">', unsafe_allow_html=True)
-        
-        # Affichage de la photo ou d'une icône de secours
+        lien_photo = str(row[col_photo]).strip() if col_photo in row else ""
         if lien_photo and lien_photo.startswith('http') and lien_photo != 'nan':
             st.image(lien_photo, use_container_width=True)
         else:
-            st.markdown("<h1 style='text-align: center; font-size: 50px; margin:0;'>🛍️</h1>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='text-align: center; font-size: 50px;'>{icon}</h1>", unsafe_allow_html=True)
             
         st.markdown(f"### {nom_produit}")
+        fmt = row[col_fmt] if col_fmt in row else "N/A"
         
-        # Gestion de la quantité en stock
-        try:
-            val_stock = str(row[col_stock]) if col_stock in row.index else "0"
-            max_stock = int(float(val_stock.replace(' ', '')))
-        except:
-            max_stock = 0
+        try: max_stock = int(float(str(row[col_stock]).replace(' ', '')))
+        except: max_stock = 0
             
         if max_stock <= 0:
-            st.markdown("<p style='color: red; font-size: 14px; margin:0;'>❌ <b>Rupture de stock !</b></p>", unsafe_allow_html=True)
+            st.markdown("<p style='color: red; font-size: 14px;'>❌ <b>Rupture de stock !</b></p>", unsafe_allow_html=True)
             quantite = 0
         else:
-            st.markdown(f"<p style='color: #8B5A6F; font-size: 14px; margin:0;'>Format : {fmt} | Stock : <b>{max_stock}</b></p>", unsafe_allow_html=True)
-            
-            # Gestion et calcul des prix et remises
+            st.markdown(f"<p style='color: #8B5A6F; font-size: 14px;'>Format : {fmt} | Stock : <b>{max_stock}</b></p>", unsafe_allow_html=True)
             try:
-                val_init = str(row[col_pinit]) if col_pinit in row.index else "0"
-                val_promo = str(row[col_ppromo]) if col_ppromo in row.index else "0"
-                
-                p_init = float(val_init.replace('€', '').replace(',', '.').replace(' ', '').strip())
-                p_promo = float(val_promo.replace('€', '').replace(',', '.').replace(' ', '').strip())
-                
+                p_init = float(str(row[col_pinit]).replace('€', '').replace(',', '.').replace(' ', '').strip())
+                p_promo = float(str(row[col_ppromo]).replace('€', '').replace(',', '.').replace(' ', '').strip())
                 remise = int((1 - (p_promo / p_init)) * 100) if p_init > 0 else 0
-                st.markdown(f"<span style='background-color:#D2143A; color:white; padding:2px 6px; border-radius:5px; font-size:14px; margin-right:5px;'>-{remise}%</span> <b style='font-size: 22px; color: #D2143A;'>{p_promo:.2f} €</b> <span style='text-decoration: line-through; color: #C0A9B0;'>{p_init:.2f} €</span>", unsafe_allow_html=True)
+                st.markdown(f"<span class='promo-badge'>-{remise}%</span> <b style='font-size: 22px; color: #D2143A;'>{p_promo:.2f} €</b> <span style='text-decoration: line-through; color: #C0A9B0;'>{p_init:.2f} €</span>", unsafe_allow_html=True)
             except:
-                val_promo_str = str(row[col_ppromo]) if col_ppromo in row.index else "0"
-                st.markdown(f"<h3 style='color: #D2143A; margin:0;'>{val_promo_str}</h3>", unsafe_allow_html=True)
+                p_pr = str(row[col_ppromo]).replace(' ', '') if col_ppromo in row else "0"
+                st.markdown(f"<h3 style='color: #D2143A;'>{p_pr}</h3>", unsafe_allow_html=True)
                 p_promo, p_init = 0, 0
                 
-            st.markdown("<p style='font-size: 12px; color: gray; margin-bottom:5px; margin-top:10px;'>Quantité désirée :</p>", unsafe_allow_html=True)
+            st.markdown("<p style='font-size: 12px; color: gray;'>Quantité :</p>", unsafe_allow_html=True)
             quantite = st.number_input(f"Qté {nom_produit}", min_value=0, max_value=max_stock, value=st.session_state.panier.get(nom_produit, {}).get('quantite', 0), key=f"prod_{index}", label_visibility="collapsed")
         
-        # Mise à jour du panier
         if quantite > 0:
             st.session_state.panier[nom_produit] = {"quantite": quantite, "prix": p_promo, "economie": (p_init - p_promo) * quantite if p_init > 0 else 0}
         elif nom_produit in st.session_state.panier:
             del st.session_state.panier[nom_produit]
-            
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 3. Barre latérale : Gestion du Panier ---
 if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
     total_facture = 0.0
-    for prod_name, details in st.session_state.panier.items():
-        st.sidebar.write(f"**{prod_name}** x{details['quantite']} : {details['prix'] * details['quantite']:.2f} €")
-        total_facture += details['prix'] * details['quantite']
+    texte_message = ""
+    
+    for article, info in st.session_state.panier.items():
+        sous_total = info['quantite'] * info['prix']
+        total_facture += sous_total
+        st.sidebar.write(f"💗 **{info['quantite']}x** {article} ({sous_total:.2f}€)")
+        texte_message += f"- {info['quantite']}x {article}\n"
+        
     st.sidebar.markdown(f"### Total : {total_facture:.2f} €")
+    
+    if st.sidebar.button("🛍️ Envoyer ma commande"):
+        st.balloons()
+        t_fin = f"Client : {st.session_state.utilisateur.capitalize()}\n\n" + texte_message + f"Total : {total_facture:.2f}€"
+        requests.post(URL_DISCORD, json={"content": t_fin})
+        st.session_state.panier = {}
+        st.rerun()
+else:
+    st.sidebar.markdown("---")
+    st.sidebar.info("Votre panier est vide. Bon shopping ! ✨")
