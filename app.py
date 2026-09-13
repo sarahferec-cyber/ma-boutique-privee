@@ -20,7 +20,7 @@ st.markdown("""
 # 🔐 LISTE DES COMPTES AUTORISÉS
 COMPTES_AUTORISES = {
     "sarah": "shopping2026",
-    "copine": "viprose",
+    "maman": "parfaite",
     "client1": "bonplan75"
 }
 
