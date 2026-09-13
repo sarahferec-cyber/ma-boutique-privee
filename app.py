@@ -1,44 +1,44 @@
 import streamlit as st
 import pandas as pd
 
-# Configurer la page pour un rendu propre
+# Configuration globale de l'application
 st.set_page_config(page_title="Les Bons Plans de Sarah", page_icon="🛍️", layout="centered")
 
-# --- Initialisation du panier ---
+# --- Initialisation du panier en session ---
 if "panier" not in st.session_state:
     st.session_state.panier = {}
 
 st.title("Les Bons Plans de Sarah 🛍️")
 
-# --- 1. Liaison Directe et Forcée avec ton Google Sheets ---
+# --- 1. Importation et Nettoyage Automatique depuis ton Google Sheets ---
 URL_SHEETS = "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing"
 
 try:
-    # Lecture du Google Sheets
-    df = pd.read_csv(URL_SHEETS)
+    # Lecture en sautant les lignes anormales
+    df = pd.read_csv(URL_SHEETS, on_bad_lines='skip')
     
-    # NETTOYAGE CRUCIAL : supprime les espaces et force les noms en minuscules sans accents
+    # Neutralisation des espaces cachés, minuscules forcées et suppression des accents
     df.columns = df.columns.str.strip().str.lower()
     df.columns = df.columns.str.replace('é', 'e').str.replace('è', 'e').str.replace('à', 'a')
 except Exception as e:
-    st.error(f"Erreur de connexion au Google Sheets : {e}")
+    st.error(f"Erreur technique lors du chargement : {e}")
     df = pd.DataFrame()
 
 # --- 2. Boucle d'affichage dynamique des produits ---
 if not df.empty:
     for index, row in df.iterrows():
-        # Extraction sécurisée (les noms cherchent maintenant des mots-clés simplifiés en minuscules)
+        # Lecture sécurisée des données nettoyées
         lien_photo = str(row['photo produit']).strip() if 'photo produit' in df.columns else ""
         nom_produit = str(row['denomination']).strip() if 'denomination' in df.columns else ""
         fmt = str(row['litre / gramme']).strip() if 'litre / gramme' in df.columns else "N/A"
         
-        # Sauter les lignes vides du tableau
+        # Ignorer les lignes vides du Sheets
         if not nom_produit or nom_produit.lower() == "nan" or nom_produit == "produit sans nom":
             continue
             
         st.markdown('<div style="border:1px solid #ddd; padding:15px; border-radius:10px; margin-bottom:15px;">', unsafe_allow_html=True)
         
-        # Affichage de la photo ou de l'émoji de remplacement
+        # Affichage de l'image ou icône par défaut
         if lien_photo and lien_photo.startswith('http') and lien_photo != 'nan':
             st.image(lien_photo, use_container_width=True)
         else:
@@ -46,7 +46,7 @@ if not df.empty:
             
         st.markdown(f"### {nom_produit}")
         
-        # Gestion de la quantité en stock (sans le bug de l'accent 'é')
+        # Gestion dynamique du stock
         try:
             val_stock = str(row['quantite']) if 'quantite' in df.columns else "0"
             max_stock = int(float(val_stock.replace(' ', '')))
@@ -59,7 +59,7 @@ if not df.empty:
         else:
             st.markdown(f"<p style='color: #8B5A6F; font-size: 14px; margin:0;'>Format : {fmt} | Stock : <b>{max_stock}</b></p>", unsafe_allow_html=True)
             
-            # Gestion et calcul des prix et réductions
+            # Traitement des prix et affichage du badge de réduction
             try:
                 val_init = str(row['prix initial']) if 'prix initial' in df.columns else "0"
                 val_promo = str(row['prix promo']) if 'prix promo' in df.columns else "0"
@@ -77,7 +77,7 @@ if not df.empty:
             st.markdown("<p style='font-size: 12px; color: gray; margin-bottom:5px; margin-top:10px;'>Quantité désirée :</p>", unsafe_allow_html=True)
             quantite = st.number_input(f"Qté {nom_produit}", min_value=0, max_value=max_stock, value=st.session_state.panier.get(nom_produit, {}).get('quantite', 0), key=f"prod_{index}", label_visibility="collapsed")
         
-        # Gestion dynamique du panier
+        # Enregistrement du Panier
         if quantite > 0:
             st.session_state.panier[nom_produit] = {"quantite": quantite, "prix": p_promo, "economie": (p_init - p_promo) * quantite if p_init > 0 else 0}
         elif nom_produit in st.session_state.panier:
@@ -85,7 +85,7 @@ if not df.empty:
             
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 3. Barre latérale : Affichage du Panier ---
+# --- 3. Barre latérale : Gestion du Panier ---
 if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
