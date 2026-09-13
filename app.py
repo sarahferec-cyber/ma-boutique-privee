@@ -21,7 +21,7 @@ st.markdown("""
 COMPTES_AUTORISES = {
     "sarah": "shopping2026",
     "maman": "parfaite",
-    "client1": "bonplan75"
+    "invite": "bonplan11"
 }
 
 if "connecte" not in st.session_state:
@@ -43,7 +43,7 @@ if not st.session_state.connecte:
                 st.error("Identifiant ou mot de passe incorrect. ❌")
     st.stop()
 
-st.title("🌸 Le Dressing des Bons Plans 🛍️")
+st.title("🌸 Le Boutique des Bons Plans 🛍️")
 st.write(f"Coucou **{st.session_state.utilisateur.capitalize()}** !")
 
 if st.sidebar.button("🚪 Se déconnecter"):
@@ -52,7 +52,7 @@ if st.sidebar.button("🚪 Se déconnecter"):
     st.rerun()
 
 URL_SHEETS = "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing"
-URL_DISCORD = "https://discord.com"
+URL_DISCORD = "https://discord.com/api/webhooks/1548601979402719354/NHTueLki6Vo7SanErzCq-CE0bh4xb0cmO6hHZiR8gNLEZNGMVcWK1uapL2X2v3u2qw-d"
 
 def load_clean_data():
     try:
