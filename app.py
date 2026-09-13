@@ -30,7 +30,7 @@ if "utilisateur" not in st.session_state:
     st.session_state.utilisateur = ""
 
 if not st.session_state.connecte:
-    st.title("🎀 Espace Privé : Le Dressing des Bons Plans 🌸")
+    st.title("🎀 Espace Privé : La Boutique des Bons Plans 🌸")
     with st.form("formulaire_connexion"):
         identifiant = st.text_input("👤 Votre Identifiant :").strip().lower()
         mot_de_passe = st.text_input("🔑 Votre Mot de passe :", type="password")
