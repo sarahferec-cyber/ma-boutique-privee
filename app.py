@@ -10,14 +10,16 @@ if "panier" not in st.session_state:
 
 st.title("Les Bons Plans de Sarah 🛍️")
 
-# --- 1. Liaison avec ton Google Sheets ---
-# Transformation de ton lien pour que Streamlit télécharge le tableau au format CSV
+# --- 1. Liaison Directe et Forcée avec ton Google Sheets ---
 URL_SHEETS = "https://google.com"
 
 try:
+    # Lecture du Google Sheets
     df = pd.read_csv(URL_SHEETS)
-    # Nettoie les espaces masqués dans les noms des colonnes
-    df.columns = df.columns.str.strip()
+    
+    # NETTOYAGE CRUCIAL : supprime les espaces et force les noms en minuscules sans accents
+    df.columns = df.columns.str.strip().str.lower()
+    df.columns = df.columns.str.replace('é', 'e').str.replace('è', 'e').str.replace('à', 'a')
 except Exception as e:
     st.error(f"Erreur de connexion au Google Sheets : {e}")
     df = pd.DataFrame()
@@ -25,13 +27,13 @@ except Exception as e:
 # --- 2. Boucle d'affichage dynamique des produits ---
 if not df.empty:
     for index, row in df.iterrows():
-        # Extraction propre des colonnes de ton Google Sheets
-        lien_photo = str(row['Photo produit']).strip() if 'Photo produit' in row else ""
-        nom_produit = str(row['Denomination']).strip() if 'Denomination' in row else ""
-        fmt = str(row['Litre / Gramme']).strip() if 'Litre / Gramme' in row else "N/A"
+        # Extraction sécurisée (les noms cherchent maintenant des mots-clés simplifiés en minuscules)
+        lien_photo = str(row['photo produit']).strip() if 'photo produit' in df.columns else ""
+        nom_produit = str(row['denomination']).strip() if 'denomination' in df.columns else ""
+        fmt = str(row['litre / gramme']).strip() if 'litre / gramme' in df.columns else "N/A"
         
-        # Sauter les lignes vides ou incomplètes du tableau
-        if not nom_produit or nom_produit.lower() == "nan":
+        # Sauter les lignes vides du tableau
+        if not nom_produit or nom_produit.lower() == "nan" or nom_produit == "produit sans nom":
             continue
             
         st.markdown('<div style="border:1px solid #ddd; padding:15px; border-radius:10px; margin-bottom:15px;">', unsafe_allow_html=True)
@@ -44,9 +46,10 @@ if not df.empty:
             
         st.markdown(f"### {nom_produit}")
         
-        # Gestion de la quantité en stock
+        # Gestion de la quantité en stock (sans le bug de l'accent 'é')
         try:
-            max_stock = int(float(str(row['Quantité']).replace(' ', '')))
+            val_stock = str(row['quantite']) if 'quantite' in df.columns else "0"
+            max_stock = int(float(val_stock.replace(' ', '')))
         except:
             max_stock = 0
             
@@ -58,32 +61,25 @@ if not df.empty:
             
             # Gestion et calcul des prix et réductions
             try:
-                p_init = float(str(row['Prix initial']).replace('€', '').replace(',', '.').replace(' ', '').strip())
-                p_promo = float(str(row['Prix promo']).replace('€', '').replace(',', '.').replace(' ', '').strip())
+                val_init = str(row['prix initial']) if 'prix initial' in df.columns else "0"
+                val_promo = str(row['prix promo']) if 'prix promo' in df.columns else "0"
+                
+                p_init = float(val_init.replace('€', '').replace(',', '.').replace(' ', '').strip())
+                p_promo = float(val_promo.replace('€', '').replace(',', '.').replace(' ', '').strip())
+                
                 remise = int((1 - (p_promo / p_init)) * 100) if p_init > 0 else 0
                 st.markdown(f"<span style='background-color:#D2143A; color:white; padding:2px 6px; border-radius:5px; font-size:14px; margin-right:5px;'>-{remise}%</span> <b style='font-size: 22px; color: #D2143A;'>{p_promo:.2f} €</b> <span style='text-decoration: line-through; color: #C0A9B0;'>{p_init:.2f} €</span>", unsafe_allow_html=True)
             except:
-                p_promo_str = str(row['Prix promo'])
+                p_promo_str = str(row['prix promo']) if 'prix promo' in df.columns else "0"
                 st.markdown(f"<h3 style='color: #D2143A; margin:0;'>{p_promo_str}</h3>", unsafe_allow_html=True)
                 p_promo, p_init = 0, 0
                 
             st.markdown("<p style='font-size: 12px; color: gray; margin-bottom:5px; margin-top:10px;'>Quantité désirée :</p>", unsafe_allow_html=True)
-            quantite = st.number_input(
-                f"Qté {nom_produit}", 
-                min_value=0, 
-                max_value=max_stock, 
-                value=st.session_state.panier.get(nom_produit, {}).get('quantite', 0), 
-                key=f"prod_{index}", 
-                label_visibility="collapsed"
-            )
+            quantite = st.number_input(f"Qté {nom_produit}", min_value=0, max_value=max_stock, value=st.session_state.panier.get(nom_produit, {}).get('quantite', 0), key=f"prod_{index}", label_visibility="collapsed")
         
         # Gestion dynamique du panier
         if quantite > 0:
-            st.session_state.panier[nom_produit] = {
-                "quantite": quantite, 
-                "prix": p_promo, 
-                "economie": (p_init - p_promo) * quantite if p_init > 0 else 0
-            }
+            st.session_state.panier[nom_produit] = {"quantite": quantite, "prix": p_promo, "economie": (p_init - p_promo) * quantite if p_init > 0 else 0}
         elif nom_produit in st.session_state.panier:
             del st.session_state.panier[nom_produit]
             
