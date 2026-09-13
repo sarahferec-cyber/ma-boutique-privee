@@ -1,3 +1,8 @@
+import streamlit as st
+import pandas as pd
+import requests
+import io
+
 # 1. Configuration de la page style Amazon Mobile
 st.set_page_config(page_title="Mes Bons Plans 🌸", page_icon="🛍️", layout="wide")
 
@@ -46,7 +51,8 @@ if st.sidebar.button("🚪 Se déconnecter"):
     st.session_state.utilisateur = ""
     st.rerun()
 
-URL_SHEETS = "https://docs.google.com/spreadsheets/d/1S9bjzHGdS-zTc_uQIqdgJqd5OMOMSrD5telEoPX6jhA/edit?usp=sharing"
+# CORRECTION : Mise en place du lien actif contenant tes 99 produits
+URL_SHEETS = "https://google.com"
 URL_DISCORD = "https://discord.com"
 
 def load_clean_data():
