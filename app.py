@@ -21,6 +21,7 @@ st.markdown("""
 COMPTES_AUTORISES = {
     "sarah": "shopping2026",
     "maman": "parfaite",
+    "carole": "unique",
     "invite": "bonplan11"
 }
 
