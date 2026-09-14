@@ -18,13 +18,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 🔐 LISTE DES COMPTES AUTORISÉS
-COMPTES_AUTORISES = {
+COMPTES_AUTORISES = 
     "sarah": "shopping2026",
     "maman": "parfaite",
     "carole": "unique",
     "ben": "groot"
     "invite": "bonplan11"
-}
+
 
 if "connecte" not in st.session_state:
     st.session_state.connecte = False
