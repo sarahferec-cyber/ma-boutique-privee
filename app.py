@@ -24,6 +24,7 @@ COMPTES_AUTORISES = {
     "carole": "unique",
     "ben": "groot",
     "helene": "mae",
+    "laurie": "mojito",
     "invite": "bonplan11"
 }
 
