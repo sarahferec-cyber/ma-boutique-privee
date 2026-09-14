@@ -22,6 +22,7 @@ COMPTES_AUTORISES = {
     "sarah": "shopping2026",
     "maman": "parfaite",
     "carole": "unique",
+    "ben": "groot"
     "invite": "bonplan11"
 }
 
