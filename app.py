@@ -179,17 +179,19 @@ if st.session_state.panier:
     if st.sidebar.button("✨ Valider mon achat"):
         stock_mis_a_jour_avec_succes = True 
         
-        if stock_mis_a_jour_avec_succes:
+                if stock_mis_a_jour_avec_succes:
             st.balloons()
             st.success("Achat validé avec succès ! 🎉")
-         try:
+            
+            try:
                 payload = {"content": f"🛍️ {texte_message}\n💰 Total : {total_facture:.2f}€"}
-                requests.post(URL_DISCORD, json=payload, timeout=5) # Ajout d'un timeout de sécurité
+                requests.post(URL_DISCORD, json=payload, timeout=5)  # Ajout d'un timeout de sécurité
             except Exception as e:
                 st.error(f"Erreur d'envoi Discord : {e}")
                 
-                st.session_state.panier = {}
+            st.session_state.panier = {}
             st.rerun()
+
                     
         requests.post(URL_DISCORD, json={"content": t_fin})
         st.session_state.panier = {}
