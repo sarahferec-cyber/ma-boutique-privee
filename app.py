@@ -165,32 +165,49 @@ for index, row in df_filtre.reset_index().iterrows():
 if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
-    total_facture = 0.0
-    texte_message = "Nouvelle commande de " + st.session_state.utilisateur + " :\n"
     
+    total_facture = 0.0
+    total_economies = 0.0
+    texte_message = f"🌸 **Nouvelle commande de {st.session_state.utilisateur.capitalize()}** :\n"
+    
+    # 1. On affiche le contenu du panier et on calcule les totaux
     for article, infos in st.session_state.panier.items():
         qte = infos["quantite"]
         prix = infos["prix"]
-        total_facture += prix * qte
-        texte_message += f"- {article} x{qte} ({prix:.2f}€)\n"
+        eco = infos["economie"]
         
-    st.sidebar.markdown(f"### Total : {total_facture:.2f} €")
-
+        total_facture += prix * qte
+        total_economies += eco
+        
+        # Affiche chaque produit dans la barre latérale
+        st.sidebar.write(f"• {article} (x{qte}) — {prix*qte:.2f} €")
+        texte_message += f"- {article} x{qte} ({prix:.2f}€/u)\n"
+    
+    # 2. On affiche le récapitulatif financier
+    st.sidebar.markdown(f"### Total : **{total_facture:.2f} €**")
+    if total_economies > 0:
+        st.sidebar.markdown(f"💖 *Vous économisez **{total_economies:.2f} €** sur cet achat !*")
+    
+    # 3. Le bouton de validation (parfaitement aligné)
     if st.sidebar.button("✨ Valider mon achat"):
         stock_mis_a_jour_avec_succes = True 
         
         if stock_mis_a_jour_avec_succes:
             st.balloons()
-            st.success("Achat validé avec succès ! 🎉")
+            st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
             
             try:
-                payload = {"content": f"🛍️ {texte_message}\n💰 Total : {total_facture:.2f}€"}
-                requests.post(URL_DISCORD, json=payload, timeout=5)  # Ajout d'un timeout de sécurité
+                # Envoi du message complet sur Discord avec le total et les économies
+                msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
+                payload = {"content": msg_discord}
+                requests.post(URL_DISCORD, json=payload, timeout=5)
             except Exception as e:
                 st.error(f"Erreur d'envoi Discord : {e}")
                 
+            # On vide le panier et on recharge la page
             st.session_state.panier = {}
             st.rerun()
+
 
                     
         requests.post(URL_DISCORD, json={"content": t_fin})
