@@ -58,6 +58,7 @@ if st.sidebar.button("🚪 Se déconnecter"):
 
 URL_SHEETS = "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing"
 URL_DISCORD = "https://discord.com/api/webhooks/1548601979402719354/NHTueLki6Vo7SanErzCq-CE0bh4xb0cmO6hHZiR8gNLEZNGMVcWK1uapL2X2v3u2qw-d"
+URL_MACRO_STOCK = "https://script.google.com/macros/s/AKfycbxTep4v3fevHxUE0Cv6f6SE1IRie_xCNctecO_7Ez_XXhNUQJlhc46l6mkDe-FQk7s5lA/exec"
 
 def load_clean_data():
     try:
@@ -165,19 +166,31 @@ if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
     total_facture = 0.0
-    texte_message = ""
+    texte_message = "Nouvelle commande de " + st.session_state.utilisateur + " :\n"
     
-    for article, info in st.session_state.panier.items():
-        sous_total = info['quantite'] * info['prix']
-        total_facture += sous_total
-        st.sidebar.write(f"💗 **{info['quantite']}x** {article} ({sous_total:.2f}€)")
-        texte_message += f"- {info['quantite']}x {article}\n"
+    for article, infos in st.session_state.panier.items():
+        qte = infos["quantite"]
+        prix = infos["prix"]
+        total_facture += prix * qte
+        texte_message += f"- {article} x{qte} ({prix:.2f}€)\n"
         
     st.sidebar.markdown(f"### Total : {total_facture:.2f} €")
-    
-    if st.sidebar.button("🛍️ Envoyer ma commande"):
+
+    if st.sidebar.button("✨ Valider mon achat"):
+         stock_mis_a_jour_avec_succes = True 
+        
+        if stock_mis_a_jour_avec_succes:
         st.balloons()
-        t_fin = f"Client : {st.session_state.utilisateur.capitalize()}\n\n" + texte_message + f"Total : {total_facture:.2f}€"
+            st.success("Achat validé avec succès ! 🎉")
+         try:
+                payload = {"content": f"🛍️ {texte_message}\n💰 Total : {total_facture:.2f}€"}
+                requests.post(URL_DISCORD, json=payload, timeout=5) # Ajout d'un timeout de sécurité
+            except Exception as e:
+                st.error(f"Erreur d'envoi Discord : {e}")
+                
+                st.session_state.panier = {}
+            st.rerun()
+                    
         requests.post(URL_DISCORD, json={"content": t_fin})
         st.session_state.panier = {}
         st.rerun()
