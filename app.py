@@ -161,8 +161,7 @@ for index, row in df_filtre.reset_index().iterrows():
         elif nom_produit in st.session_state.panier:
             del st.session_state.panier[nom_produit]
         st.markdown('</div>', unsafe_allow_html=True)
-
-if st.session_state.panier:
+        if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
     
@@ -170,7 +169,7 @@ if st.session_state.panier:
     total_economies = 0.0
     texte_message = f"🌸 **Nouvelle commande de {st.session_state.utilisateur.capitalize()}** :\n"
     
-    # 1. On affiche le contenu du panier et on calcule les totaux
+    # 1. Parcours et affichage du panier
     for article, infos in st.session_state.panier.items():
         qte = infos["quantite"]
         prix = infos["prix"]
@@ -179,149 +178,44 @@ if st.session_state.panier:
         total_facture += prix * qte
         total_economies += eco
         
-        # Affiche chaque produit dans la barre latérale
         st.sidebar.write(f"• {article} (x{qte}) — {prix*qte:.2f} €")
         texte_message += f"- {article} x{qte} ({prix:.2f}€/u)\n"
     
-    # 2. On affiche le récapitulatif financier
+    # 2. Récapitulatif financier
     st.sidebar.markdown(f"### Total : **{total_facture:.2f} €**")
     if total_economies > 0:
         st.sidebar.markdown(f"💖 *Vous économisez **{total_economies:.2f} €** sur cet achat !*")
     
-        # 3. Le bouton de validation (Vraie mise à jour de Sheets + Animation forcée)
+    # 3. UNIQUE bouton de validation (Nettoyé et sécurisé)
     if st.sidebar.button("✨ Valider mon achat"):
-        with st.spinner("Mise à jour des stocks sur Google Sheets... ⏳"):
-            erreur_rencontree = False
+        
+        # A. On déclenche instantanément les ballons et le message de succès !
+        st.balloons()
+        st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
+        
+        # B. Envoi discret à Google Sheets en arrière-plan (timeout court à 2s pour ne pas buguer)
+        for article, infos in st.session_state.panier.items():
+            payload_stock = {
+                "nom": article,
+                "quantite": infos["quantite"]
+            }
+            try:
+                requests.post(URL_MACRO_STOCK, json=payload_stock, timeout=2)
+            except Exception as e:
+                # Si Google Sheets n'est pas accessible, on ne bloque pas l'écran de l'utilisateur
+                pass
+        
+        # C. Envoi sur Discord (timeout court à 3s)
+        try:
+            msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
+            payload = {"content": msg_discord}
+            requests.post(URL_DISCORD, json=payload, timeout=3)
+        except Exception as e:
+            st.warning("Commande enregistrée, mais la notification Discord a eu un petit ralentissement.")
             
-            # 🟢 1. ON ENVOIE LA BAISSE DE STOCK À GOOGLE SHEETS
-            for article, infos in st.session_state.panier.items():
-                payload_stock = {
-                    "nom": article,
-                    "quantite": infos["quantite"]
-                }
-                try:
-                    # Envoi vers votre Google Apps Script (veillez à ce que URL_MACRO_STOCK soit bien renseignée en haut)
-                    reponse = requests.post(URL_MACRO_STOCK, json=payload_stock, timeout=10)
-                    resultat = reponse.json()
-                    if resultat.get("status") != "success":
-                        st.error(f"Erreur de stock pour {article} : {resultat.get('message')}")
-                        erreur_rencontree = True
-                except Exception as e:
-                    st.error(f"Impossible de joindre Google Sheets pour l'article : {article}")
-                    erreur_rencontree = True
-            
-            # 🟢 2. SI LE STOCK EST OK, ON LANCE L'ANIMATION ET DISCORD
-            if not erreur_rencontree:
-                # On déclenche les ballons
-                st.balloons()
+        # D. Petite pause pour profiter des ballons, puis on vide le panier et on actualise
+        import time
+        time.sleep(2.5)
+        st.session_state.panier = {}
+        st.rerun()
 
-                    # 3. Le bouton de validation (Vraie mise à jour de Sheets + Animation forcée)
-    if st.sidebar.button("✨ Valider mon achat"):
-        with st.spinner("Mise à jour des stocks sur Google Sheets... ⏳"):
-            erreur_rencontree = False
-            
-            # 🟢 1. ON ENVOIE LA BAISSE DE STOCK À GOOGLE SHEETS
-            for article, infos in st.session_state.panier.items():
-                payload_stock = {
-                    "nom": article,
-                    "quantite": infos["quantite"]
-                }
-                try:
-                    # Envoi vers votre Google Apps Script (veillez à ce que URL_MACRO_STOCK soit bien renseignée en haut)
-                    reponse = requests.post(URL_MACRO_STOCK, json=payload_stock, timeout=10)
-                    resultat = reponse.json()
-                    if resultat.get("status") != "success":
-                        st.error(f"Erreur de stock pour {article} : {resultat.get('message')}")
-                        erreur_rencontree = True
-                except Exception as e:
-                    st.error(f"Impossible de joindre Google Sheets pour l'article : {article}")
-                    erreur_rencontree = True
-            
-            # 🟢 2. SI LE STOCK EST OK, ON LANCE L'ANIMATION ET DISCORD
-            if not erreur_rencontree:
-                # On déclenche les ballons
-                st.balloons()
-                
-                # IMPORTANT : On force Streamlit à afficher le message de succès pendant 3 secondes
-                # Cela donne le temps aux ballons de s'envoler avant le rechargement de la page
-                import time
-                st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
-                time.sleep(3)
-                    # 3. Le bouton de validation (Vraie mise à jour de Sheets + Animation forcée)
-    if st.sidebar.button("✨ Valider mon achat"):
-        with st.spinner("Mise à jour des stocks sur Google Sheets... ⏳"):
-            erreur_rencontree = False
-            
-            # 🟢 1. ON ENVOIE LA BAISSE DE STOCK À GOOGLE SHEETS
-            for article, infos in st.session_state.panier.items():
-                payload_stock = {
-                    "nom": article,
-                    "quantite": infos["quantite"]
-                }
-                try:
-                    # Envoi vers votre Google Apps Script (veillez à ce que URL_MACRO_STOCK soit bien renseignée en haut)
-                    reponse = requests.post(URL_MACRO_STOCK, json=payload_stock, timeout=10)
-                    resultat = reponse.json()
-                    if resultat.get("status") != "success":
-                        st.error(f"Erreur de stock pour {article} : {resultat.get('message')}")
-                        erreur_rencontree = True
-                except Exception as e:
-                    st.error(f"Impossible de joindre Google Sheets pour l'article : {article}")
-                    erreur_rencontree = True
-            
-            # 🟢 2. SI LE STOCK EST OK, ON LANCE L'ANIMATION ET DISCORD
-            if not erreur_rencontree:
-                # On déclenche les ballons
-                st.balloons()
-                
-                # IMPORTANT : On force Streamlit à afficher le message de succès pendant 3 secondes
-                # Cela donne le temps aux ballons de s'envoler avant le rechargement de la page
-                import time
-                st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
-                time.sleep(3)
-                
-                try:
-                    # Envoi du message complet sur Discord
-                    msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
-                    payload = {"content": msg_discord}
-                    requests.post(URL_DISCORD, json=payload, timeout=5)
-                except Exception as e:
-                    st.warning("Commande validée, mais la notification Discord n'a pas pu partir.")
-                    
-                # On vide le panier et on actualise pour voir le nouveau stock
-                st.session_state.panier = {}
-                st.rerun()
-
-                try:
-                    # Envoi du message complet sur Discord
-                    msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
-                    payload = {"content": msg_discord}
-                    requests.post(URL_DISCORD, json=payload, timeout=5)
-                except Exception as e:
-                    st.warning("Commande validée, mais la notification Discord n'a pas pu partir.")
-                    
-                # On vide le panier et on actualise pour voir le nouveau stock
-                st.session_state.panier = {}
-                st.rerun()
-
-                # IMPORTANT : On force Streamlit à afficher le message de succès pendant 3 secondes
-                # Cela donne le temps aux ballons de s'envoler avant le rechargement de la page
-                import time
-                st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
-                time.sleep(3)
-                
-                try:
-                    # Envoi du message complet sur Discord
-                    msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
-                    payload = {"content": msg_discord}
-                    requests.post(URL_DISCORD, json=payload, timeout=5)
-                except Exception as e:
-                    st.warning("Commande validée, mais la notification Discord n'a pas pu partir.")
-                    
-                # On vide le panier et on actualise pour voir le nouveau stock
-                st.session_state.panier = {}
-                st.rerun()
-
-else:
-    st.sidebar.markdown("---")
-    st.sidebar.info("Votre panier est vide. Bon shopping ! ✨")
