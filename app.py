@@ -177,10 +177,10 @@ if st.session_state.panier:
     st.sidebar.markdown(f"### Total : {total_facture:.2f} €")
 
     if st.sidebar.button("✨ Valider mon achat"):
-         stock_mis_a_jour_avec_succes = True 
+        stock_mis_a_jour_avec_succes = True 
         
         if stock_mis_a_jour_avec_succes:
-        st.balloons()
+            st.balloons()
             st.success("Achat validé avec succès ! 🎉")
          try:
                 payload = {"content": f"🛍️ {texte_message}\n💰 Total : {total_facture:.2f}€"}
