@@ -185,37 +185,40 @@ if st.session_state.panier:
     st.sidebar.markdown(f"### Total : **{total_facture:.2f} €**")
     if total_economies > 0:
         st.sidebar.markdown(f"💖 *Vous économisez **{total_economies:.2f} €** sur cet achat !*")
-    
-    # 3. UNIQUE bouton de validation (Nettoyé et sécurisé)
+       # 3. Bouton de validation (Mise à jour automatique et fluide)
     if st.sidebar.button("✨ Valider mon achat"):
         
-        # A. On déclenche instantanément les ballons et le message de succès !
+        # 🟢 ÉTAPE 1 : ON SAUVEGARDE LE PANIER ET ON LE VIDE DANS LA SESSION
+        panier_a_traiter = st.session_state.panier.copy()
+        st.session_state.panier = {} 
+        
+        # 🟢 ÉTAPE 2 : EFFETS VISUELS IMMÉDIATS
         st.balloons()
         st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
         
-        # B. Envoi discret à Google Sheets en arrière-plan (timeout court à 2s pour ne pas buguer)
-        for article, infos in st.session_state.panier.items():
+        # 🟢 ÉTAPE 3 : ENVOI SUR DISCORD
+        try:
+            msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
+            requests.post(URL_DISCORD, json={"content": msg_discord}, timeout=3)
+        except:
+            pass
+        
+        # 🟢 ÉTAPE 4 : MISE À JOUR DU STOCK GOOGLE SHEETS
+        for article, infos in panier_a_traiter.items():
             payload_stock = {
                 "nom": article,
                 "quantite": infos["quantite"]
             }
             try:
                 requests.post(URL_MACRO_STOCK, json=payload_stock, timeout=2)
-            except Exception as e:
-                # Si Google Sheets n'est pas accessible, on ne bloque pas l'écran de l'utilisateur
+            except:
                 pass
         
-        # C. Envoi sur Discord (timeout court à 3s)
-        try:
-            msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
-            payload = {"content": msg_discord}
-            requests.post(URL_DISCORD, json=payload, timeout=3)
-        except Exception as e:
-            st.warning("Commande enregistrée, mais la notification Discord a eu un petit ralentissement.")
-            
-        # D. Petite pause pour profiter des ballons, puis on vide le panier et on actualise
+        # 🟢 ÉTAPE 5 : RECHARGEMENT SÉCURISÉ
+        # On utilise une pause légère pour laisser l'animation respirer, 
+        # puis un rerun isolé en fin de fonction qui s'exécute proprement.
         import time
-        time.sleep(2.5)
-        st.session_state.panier = {}
+        time.sleep(1.5)
         st.rerun()
-
+ 
+   
