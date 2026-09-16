@@ -18,6 +18,27 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+        # 2. EFFETS VISUELS CUSTOMISÉS (Pluie de sous ! 💸)
+        import streamlit.components.v1 as components
+        
+        # Injection d'une pluie de billets et de sacs de monnaie en HTML/JS canvas
+        components.html("""
+            <script src="https://cdn.jsdelivr.net/npm/js-confetti@latest/dist/js-confetti.browser.js"></script>
+            <script>
+                const jsConfetti = new JSConfetti();
+                // Lance une explosion massive d'émojis de sous !
+                jsConfetti.addConfetti({
+                    emojis: ['💸', '💵', '💰', '💶', '🌸'],
+                    emojiSize: 50,
+                    confettiNumber: 80,
+                });
+            </script>
+        """, height=0)
+        
+        # Message de réussite rose
+        st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
+
+
 # 🔐 LISTE DES COMPTES AUTORISÉS
 COMPTES_AUTORISES = {
     "sarah": "shopping2026",
