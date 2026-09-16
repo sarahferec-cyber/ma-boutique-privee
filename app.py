@@ -462,313 +462,90 @@ choix_cat = (
     .lower()
 )
 # ============================================================
-# 18. FILTRAGE
+# 13. FILTRAGE ET AFFICHAGE DU CATALOGUE PRODUITS
 # ============================================================
-if "tous les rayons" in choix_cat_brut.lower():
-    df_filtre = df.copy()
-elif "nouveauté" in choix_cat_brut.lower() or "nouveaute" in choix_cat_brut.lower():
-    df_filtre = df[
-        df[col_cat]
-        .astype(str)
-        .str.lower()
-        .str.contains(
-            "nouveaut",
-            na=False,
-            regex=False
-        )
-    ]
-else:
-    df_filtre = df[
-        df[col_cat]
-        .astype(str)
-        .str.lower()
-        .str.contains(
-            choix_cat,
-            na=False,
-            regex=False
-        )
-    ]
-# ============================================================
-# 19. TITRE DE LA SÉLECTION
-# ============================================================
-st.subheader(
-    f"💫 Sélection : {choix_cat_brut} "
-    f"({len(df_filtre)} pépites)"
-)
-# ============================================================
-# 20. AFFICHAGE DES PRODUITS
-# ============================================================
-cols = st.columns(3)
-for index, row in df_filtre.reset_index().iterrows():
-    # Index original Google Sheets
-    index_original = row["index"]
-    # --------------------------------------------------------
-    # Nom
-    # --------------------------------------------------------
-    nom_produit = str(
-        row[col_nom]
-    ).strip()
-    if nom_produit.lower() in [
-        "nan",
-        "",
-        "denomination"
-    ]:
+df_filtre = df.copy()
+if col_cat and categorie_choisie != "Toutes":
+    df_filtre = df_filtre[df_filtre[col_cat] == categorie_choisie]
+
+# Grid layout : 3 colonnes de produits par ligne
+colonnes_produits = st.columns(3)
+
+for index, row in df_filtre.iterrows():
+    nom_produit = row[col_nom]
+    stock_actuel = int(convertir_float(row[col_stock]))
+    
+    # Si l'article n'a pas de nom ou est hors-stock, on passe au suivant
+    if pd.isna(nom_produit) or str(nom_produit).strip() == "" or stock_actuel <= 0:
         continue
-    # --------------------------------------------------------
-    # Prix
-    # --------------------------------------------------------
-    p_init = convertir_float(
-        row[col_pinit]
-    )
-    p_promo = convertir_float(
-        row[col_ppromo]
-    )
-    economie_unitaire = max(
-        0,
-        p_init - p_promo
-    )
-    # --------------------------------------------------------
-    # Stock
-    # --------------------------------------------------------
-    max_stock = int(
-        convertir_float(
-            row[col_stock]
-        )
-    )
-    # --------------------------------------------------------
-    # Format
-    # --------------------------------------------------------
-    if col_fmt:
-        fmt = str(
-            row[col_fmt]
-        ).strip()
-    else:
-        fmt = "N/A"
-    # --------------------------------------------------------
-    # Catégorie
-    # --------------------------------------------------------
-    cat_nom = str(
-        row[col_cat]
-    ).lower()
-    # --------------------------------------------------------
-    # Icône
-    # --------------------------------------------------------
-    icon = "🛍️"
-    for mot_cle, emoji in DICTIONNAIRE_EMOJIS.items():
-        if mot_cle in cat_nom:
-            icon = emoji
-            break
-    # --------------------------------------------------------
-    # CARTE PRODUIT
-    # --------------------------------------------------------
-    with cols[index % 3]:
-        st.markdown(
-            '<div class="product-card">',
-            unsafe_allow_html=True
-        )
-        # ----------------------------------------------------
-        # Photo
-        # ----------------------------------------------------
-        lien_photo = ""
-        if col_photo:
-            lien_photo = str(
-                row[col_photo]
-            ).strip()
-        if (
-            lien_photo
-            and lien_photo.startswith("http")
-            and lien_photo.lower() != "nan"
-        ):
-            try:
-                st.image(
-                    lien_photo,
-                    use_container_width=True
-                )
-            except Exception:
-                st.markdown(
-                    f"""
-                    <h1 style="
-                        text-align:center;
-                        font-size:50px;
-                    ">
-                        {icon}
-                    </h1>
-                    """,
-                    unsafe_allow_html=True
-                )
+        
+    px_base = convertir_float(row[col_prix_base]) if col_prix_base else 0.0
+    px_promo = convertir_float(row[col_prix_promo]) if col_prix_promo else px_base
+    
+    # CALCUL DU POURCENTAGE DE PROMOTION
+    pourcentage_remise = int(((px_base - px_promo) / px_base) * 100) if px_base > px_promo else 0
+    
+    # Répartition équitable dans la grille
+    col_courante = colonnes_produits[index % 3]
+    
+    with col_courante:
+        # Construction du texte de la promotion
+        texte_promo_html = ""
+        if pourcentage_remise > 0:
+            texte_promo_html = f"""
+            <div style='background-color: #FF69B4; color: white; padding: 5px; border-radius: 10px; font-weight: bold; margin: 10px auto; width: fit-content; font-size: 14px;'>
+                🔥 ÉCONOMIE : -{pourcentage_remise}%
+            </div>
+            """
         else:
-            st.markdown(
-                f"""
-                <h1 style="
-                    text-align:center;
-                    font-size:50px;
-                ">
-                    {icon}
-                </h1>
-                """,
-                unsafe_allow_html=True
-            )
-        # ----------------------------------------------------
-        # Nom
-        # ----------------------------------------------------
-        st.markdown(
-            f"### {nom_produit}"
-        )
-        # ----------------------------------------------------
-        # Prix au kg / litre
-        # ----------------------------------------------------
-        if col_prix_unitaire:
-            prix_unitaire_brut = str(
-                row[col_prix_unitaire]
-            ).strip()
-            if "€/kg" in prix_unitaire_brut.lower():
-                prix_unitaire_propre = (
-                    prix_unitaire_brut
-                    .replace("€/kg", "€ au Kg")
-                    .replace("€/KG", "€ au Kg")
-                )
-            elif "€/l" in prix_unitaire_brut.lower():
-                prix_unitaire_propre = (
-                    prix_unitaire_brut
-                    .replace("€/L", "€ au Litre")
-                    .replace("€/l", "€ au Litre")
-                )
-            else:
-                prix_unitaire_propre = (
-                    prix_unitaire_brut
-                )
-            if (
-                prix_unitaire_propre.lower()
-                not in ["nan", "n/a", ""]
-            ):
-                st.markdown(
-                    f"""
-                    <p style="
-                        color:#C71585;
-                        font-size:13px;
-                        font-weight:500;
-                        margin-top:-10px;
-                    ">
-                        ⚖️ {prix_unitaire_propre}
-                    </p>
-                    """,
-                    unsafe_allow_html=True
-                )
-        # ----------------------------------------------------
-        # Format
-        # ----------------------------------------------------
-        st.markdown(
-            f"""
-            <p style="
-                color:#555555;
-                font-size:14px;
-                margin-bottom:5px;
-            ">
-                📦 Format : {fmt}
+            texte_promo_html = "<div style='margin: 10px 0; color: #757575; font-size: 13px; font-style: italic;'>Prix bas garanti ✨</div>"
+
+        st.markdown(f"""
+        <div class="product-card">
+            <h3>{nom_produit}</h3>
+            <p style='color: gray; font-size: 14px;'>📦 Format : {row[col_format] if col_format and not pd.isna(row[col_format]) else 'N/A'}</p>
+            
+            <p style='margin-top: 10px; font-size: 18px;'>
+                <del style='color: #FF4D4D; font-size: 15px;'>{f"{px_base:.2f} €" if px_base > px_promo else ""}</del> 
+                <strong style='color: #2E8B57; font-size: 24px; margin-left: 8px;'>{px_promo:.2f} €</strong>
             </p>
-            """,
-            unsafe_allow_html=True
+            
+            <!-- AFFICHAGE DU POURCENTAGE ICI -->
+            {texte_promo_html}
+            
+            <p style='color: #C71585; font-weight: bold; margin-top: 10px;'>Disponibles : {stock_actuel} restant(s)</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Sélecteur de quantité basé sur le stock réel du fichier Excel
+        quantite_selectionnee = st.number_input(
+            f"Quantité pour {nom_produit}", 
+            min_value=1, 
+            max_value=stock_actuel, 
+            value=1, 
+            key=f"input_{index}"
         )
-        # ----------------------------------------------------
-        # Prix
-        # ----------------------------------------------------
-        st.markdown(
-            f"""
-            <p style="
-                font-size:14px;
-                margin-bottom:2px;
-            ">
-                Avant :
-                <span style="
-                    text-decoration:line-through;
-                    color:#888888;
-                ">
-                    {p_init:.2f} €
-                </span>
-            </p>
-            <p style="
-                font-size:20px;
-                font-weight:bold;
-                color:#FF69B4;
-                margin-top:0;
-            ">
-                🔥 {p_promo:.2f} €
-            </p>
-            """,
-            unsafe_allow_html=True
-        )
-        # ----------------------------------------------------
-        # Stock
-        # ----------------------------------------------------
-        if max_stock <= 0:
-            st.markdown(
-                """
-                <p style="
-                    color:red;
-                    font-size:14px;
-                    font-weight:bold;
-                ">
-                    ❌ Rupture de stock !
-                </p>
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown(
-                f"""
-                <p style="
-                    color:green;
-                    font-size:13px;
-                ">
-                    ✅ En stock ({max_stock} dispos)
-                </p>
-                """,
-                unsafe_allow_html=True
-            )
-            # ------------------------------------------------
-            # Bouton achat
-            # ------------------------------------------------
-            if st.button(
-                "🛒 Prendre ce produit",
-                key=f"btn_{index_original}"
-            ):
-                # Quantité déjà dans le panier
-                if nom_produit in st.session_state.panier:
-                    quantite_actuelle = st.session_state.panier[
-                        nom_produit
-                    ].get("quantite", 0)
-                    if quantite_actuelle < max_stock:
-                        st.session_state.panier[
-                            nom_produit
-                        ]["quantite"] += 1
-                        st.success(
-                            "Ajouté au panier ! ✨"
-                        )
-                    else:
-                        st.error(
-                            "Désolé, pas assez de stock disponible !"
-                        )
-                else:
-                    # Ligne réelle dans le DataFrame
-                    ligne_sheets = (
-                        int(index_original) + 2
-                    )
-                    st.session_state.panier[
-                        nom_produit
-                    ] = {
-                        "quantite": 1,
-                        "prix": p_promo,
-                        "prix_initial": p_init,
-                        "economie_unitaire":
-                            economie_unitaire,
-                        "ligne_sheets":
-                            ligne_sheets
-                    }
-                    st.success(
-                        "Ajouté au panier ! ✨"
-                    )
-                    time.sleep(0.3)
+        
+        if st.button(f"🛒 Ajouter au panier", key=f"btn_{index}"):
+            # Gestion de l'ajout ou incrémentation au panier existant
+            if nom_produit in st.session_state.panier:
+                nvelle_qte = st.session_state.panier[nom_produit]["quantite"] + quantite_selectionnee
+                if nvelle_qte <= stock_actuel:
+                    st.session_state.panier[nom_produit]["quantite"] = nvelle_qte
+                    st.toast(f"✅ Quantité mise à jour pour {nom_produit} !", icon="🛒")
+                    time.sleep(0.5)
                     st.rerun()
+                else:
+                    st.error(f"Impossible d'ajouter plus que le stock disponible ({stock_actuel}).")
+            else:
+                st.session_state.panier[nom_produit] = {
+                    "quantite": quantite_selectionnee,
+                    "prix": px_promo
+                }
+                st.toast(f"🛒 {nom_produit} ajouté au panier !", icon="✨")
+                time.sleep(0.5)
+                st.rerun()
+
         st.markdown(
             "</div>",
             unsafe_allow_html=True
