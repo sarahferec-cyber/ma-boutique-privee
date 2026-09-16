@@ -47,7 +47,7 @@ if not st.session_state.connecte:
                 st.session_state.connecte = True
                 st.session_state.utilisateur = identifiant
                 st.rerun()
-    if "achat_reussi" not in st.session_state:
+if "achat_reussi" not in st.session_state:
     st.session_state.achat_reussi = False
 
             else:
