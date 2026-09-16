@@ -50,7 +50,7 @@ if not st.session_state.connecte:
 if "achat_reussi" not in st.session_state:
     st.session_state.achat_reussi = False
 
-            else:
+else:
                 st.error("Identifiant ou mot de passe incorrect. ❌")
     st.stop()
 
