@@ -176,7 +176,7 @@ for index, row in df_filtre.reset_index().iterrows():
         st.markdown('<div class="product-card">', unsafe_allow_html=True)
         cat_nom = str(row[col_cat]).lower() if col_cat in row else ""
         
-        # Sélection de l'icône de la carte produit
+        # 1. Sélection de l'icône de la carte produit
         icon = "🛍️"
         for mot_cle, emj in DICTIONNAIRE_EMOJIS.items():
             if mot_cle in cat_nom:
@@ -189,60 +189,50 @@ for index, row in df_filtre.reset_index().iterrows():
         else:
             st.markdown(f"<h1 style='text-align: center; font-size: 50px;'>{icon}</h1>", unsafe_allow_html=True)
             
-        # 1. On affiche le nom du produit UNE SEULE FOIS ici
+        # 2. Affichage UNIQUE du nom du produit
         st.markdown(f"### {nom_produit}")
         
-        # 2. On affiche le prix au kilo juste en dessous (sans répéter la désignation)
+        # 3. Affichage du prix au kilo / litre automatique
         prix_unitaire = row['prix au kg / litre'] if 'prix au kg / litre' in row else "N/A"
-        st.markdown(f"<p style='color: #C71585; font-size: 13px; font-weight: 500; margin-top: -10px; margin-bottom: 10px;'>⚖️ {prix_unitaire}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color: #C71585; font-size: 13px; font-weight: 500; margin-top: -10px;'>⚖️ {prix_unitaire}</p>", unsafe_allow_html=True)
         
-        # 3. Le reste de votre code pour le format et les stocks se poursuit normalement
+        # 4. Affichage du format (Litre / Gramme)
         fmt = row[col_fmt] if col_fmt in row else "N/A"
+        st.markdown(f"<p style='color: #555555; font-size: 14px; margin-bottom: 5px;'>📦 Format : {fmt}</p>", unsafe_allow_html=True)
         
+        # 5. Affichage des prix (Initial barré et Promo en gros)
+        p_init = row[col_pinit] if col_pinit in row else "0.00"
+        p_promo = row[col_ppromo] if col_ppromo in row else "0.00"
+        
+        st.markdown(f"""
+            <p style='font-size: 14px; margin-bottom: 2px;'>Avant : <span style='text-decoration: line-through; color: #888888;'>{p_init} €</span></p>
+            <p style='font-size: 20px; font-weight: bold; color: #FF69B4; margin-top: 0px;'>🔥 {p_promo} €</p>
+        """, unsafe_allow_html=True)
+        
+        # 6. Gestion des stocks et bouton d'achat
         try: max_stock = int(float(str(row[col_stock]).replace(' ', '')))
         except: max_stock = 0
-        
-        quantite = 0
             
         if max_stock <= 0:
-            st.markdown("<p style='color: red; font-size: 14px;'>❌ <b>Rupture de stock !</b></p>", unsafe_allow_html=True)
-
-
-            
-        st.markdown(f"### {nom_produit}")
-        fmt = row[col_fmt] if col_fmt in row else "N/A"
-        
-        try: max_stock = int(float(str(row[col_stock]).replace(' ', '')))
-        except: max_stock = 0
-        
-        quantite = 0
-            
-        if max_stock <= 0:
-            st.markdown("<p style='color: red; font-size: 14px;'>❌ <b>Rupture de stock !</b></p>", unsafe_allow_html=True)
+            st.markdown("<p style='color: red; font-size: 14px; font-weight: bold;'>❌ Rupture de stock !</p>", unsafe_allow_html=True)
         else:
-            st.markdown(f"<p style='color: #8B5A6F; font-size: 14px;'>Format : {fmt} | Stock : <b>{max_stock}</b></p>", unsafe_allow_html=True)
-            try:
-                p_init = float(str(row[col_pinit]).replace('€', '').replace(',', '.').replace(' ', '').strip())
-                p_promo = float(str(row[col_ppromo]).replace('€', '').replace(',', '.').replace(' ', '').strip())
-                remise = int((1 - (p_promo / p_init)) * 100) if p_init > 0 else 0
-                st.markdown(f"<span class='promo-badge'>-{remise}%</span> <b style='font-size: 22px; color: #D2143A;'>{p_promo:.2f} €</b> <span style='text-decoration: line-through; color: #C0A9B0;'>{p_init:.2f} €</span>", unsafe_allow_html=True)
-            except:
-                p_pr = str(row[col_ppromo]).replace(' ', '') if col_ppromo in row else "0"
-                st.markdown(f"<h3 style='color: #D2143A;'>{p_pr}</h3>", unsafe_allow_html=True)
-                p_promo, p_init = 0, 0
-                
-            st.markdown("<p style='font-size: 12px; color: gray;'>Quantité :</p>", unsafe_allow_html=True)
-            quantite = st.number_input(f"Qté {nom_produit}", min_value=0, max_value=max_stock, value=st.session_state.panier.get(nom_produit, {}).get('quantite', 0), key=f"prod_{index}", label_visibility="collapsed")
-        
-        if quantite > 0:
-            st.session_state.panier[nom_produit] = {
-                "quantite": quantite, 
-                "prix": p_promo, 
-                "economie": (p_init - p_promo) * quantite if p_init > 0 else 0,
-                "ligne_sheets": index + 2  
-            }
-        elif nom_produit in st.session_state.panier:
-            del st.session_state.panier[nom_produit]
+            st.markdown(f"<p style='color: green; font-size: 13px;'>✅ En stock ({max_stock} dispos)</p>", unsafe_allow_html=True)
+            
+            # Bouton d'achat pour ce produit précis
+            if st.button(f"🛒 Prendre ce produit", key=f"btn_{index}"):
+                # Code pour ajouter au panier (session_state)
+                if nom_produit in st.session_state.panier:
+                    if st.session_state.panier[nom_produit]['quantite'] < max_stock:
+                        st.session_state.panier[nom_produit]['quantite'] += 1
+                        st.success(f"Ajouté ! ✨")
+                    else:
+                        st.error("Désolé, pas assez de stock disponible !")
+                else:
+                    st.session_state.panier[nom_produit] = {'quantite': 1, 'prix': p_promo}
+                    st.success(f"Ajouté au panier ! ✨")
+                    time.sleep(0.5)
+                    st.rerun()
+                    
         st.markdown('</div>', unsafe_allow_html=True)
 
 # --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
