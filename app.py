@@ -270,7 +270,6 @@ if df.empty:
 # ============================================================
 # 11. RECHERCHE ET RECOMPOSITION DES COLONNES IMPORTÉES
 # ============================================================
-# Identification automatique des colonnes du Sheets nettoyé
 col_nom = trouver_colonne(df, ["produit", "nom", "articles", "article"])
 col_cat = trouver_colonne(df, ["categorie", "type", "rayon"])
 col_format = trouver_colonne(df, ["format", "taille", "volume", "poids"])
@@ -288,7 +287,7 @@ if not col_nom or not col_stock:
 # ============================================================
 st.sidebar.header("🎯 Filtres de recherche")
 
-# Filtre par catégorie (Définit correctement 'categorie_choisie')
+# Filtre par catégorie (Définit correctement 'categorie_choisie' avant la suite)
 categories_disponibles = ["Toutes"] + sorted(list(df[col_cat].dropna().unique())) if col_cat else ["Toutes"]
 categorie_choisie = st.sidebar.selectbox("Filtrer par rayon :", categories_disponibles)
 
@@ -385,7 +384,7 @@ for index, row in df_filtre.iterrows():
     col_courante = colonnes_produits[index % 3]
     
     with col_courante:
-        # Construction du texte de la promotion
+        # Construction du texte de la promotion sous forme de badge HTML
         if pourcentage_remise > 0:
             texte_promo_html = f"""
             <div style='background-color: #FF69B4; color: white; padding: 5px; border-radius: 10px; font-weight: bold; margin: 10px auto; width: fit-content; font-size: 14px;'>
@@ -422,7 +421,6 @@ for index, row in df_filtre.iterrows():
         )
         
         if st.button(f"🛒 Ajouter au panier", key=f"btn_{index}"):
-            # Gestion de l'ajout ou incrémentation au panier existant
             if nom_produit in st.session_state.panier:
                 nvelle_qte = st.session_state.panier[nom_produit]["quantite"] + quantite_selectionnee
                 if nvelle_qte <= stock_actuel:
