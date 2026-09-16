@@ -192,9 +192,19 @@ for index, row in df_filtre.reset_index().iterrows():
         # 2. Affichage UNIQUE du nom du produit
         st.markdown(f"### {nom_produit}")
         
-        # 3. Affichage du prix au kilo / litre automatique
-        prix_unitaire = row['prix au kg / litre'] if 'prix au kg / litre' in row else "N/A"
-        st.markdown(f"<p style='color: #C71585; font-size: 13px; font-weight: 500; margin-top: -10px;'>⚖️ {prix_unitaire}</p>", unsafe_allow_html=True)
+        # 3. Affichage du prix au kilo / litre automatique (Formaté proprement)
+        prix_unitaire_brut = str(row.get('prix au kg / litre', 'N/A'))
+        
+        # Traduction propre pour vos clientes
+        if "€/kg" in prix_unitaire_brut:
+            prix_unitaire_propre = prix_unitaire_brut.replace("€/kg", "€ au Kg")
+        elif "€/L" in prix_unitaire_brut:
+            prix_unitaire_propre = prix_unitaire_brut.replace("€/L", "€ au Litre")
+        else:
+            prix_unitaire_propre = prix_unitaire_brut
+            
+        st.markdown(f"<p style='color: #C71585; font-size: 13px; font-weight: 500; margin-top: -10px;'>⚖️ {prix_unitaire_propre}</p>", unsafe_allow_html=True)
+        
         
         # 4. Affichage du format (Litre / Gramme)
         fmt = row[col_fmt] if col_fmt in row else "N/A"
