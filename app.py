@@ -36,7 +36,7 @@ components.html("""
         """, height=0)
         
         # Message de réussite rose
-        st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
+st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
 
 
 # 🔐 LISTE DES COMPTES AUTORISÉS
