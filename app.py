@@ -220,5 +220,3 @@ if st.session_state.panier:
         import time
         time.sleep(1.5)
         st.rerun()
- 
-   
