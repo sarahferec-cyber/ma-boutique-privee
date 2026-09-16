@@ -166,7 +166,9 @@ for index, row in df_filtre.reset_index().iterrows():
         elif nom_produit in st.session_state.panier:
             del st.session_state.panier[nom_produit]
         st.markdown('</div>', unsafe_allow_html=True)
-        # --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
+
+# 🚨 ICI : ALIGNÉ À GAUCHE (0 ESPACE) POUR SORTIR DE LA BOUCLE FOR PRÉCÉDENTE
+# --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
 if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
@@ -226,4 +228,3 @@ if st.session_state.panier:
         # 5. PAUSE SÉCURISÉE AVANT ACTUALISATION FLUIDE
         time.sleep(1.5)
         st.rerun()
-
