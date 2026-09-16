@@ -104,22 +104,29 @@ col_ppromo = 'prix promo' if 'prix promo' in df.columns else 'promo'
 st.sidebar.markdown("## 🎀 Navigation")
 les_categories = list(df[col_cat].unique()) if col_cat in df.columns else []
 
-# 🔑 NETTOYAGE ET TRI : On prépare les catégories proprement
+# 1. On nettoie et on trie les catégories par ordre alphabétique
 categories_propres = [str(cat).strip().capitalize() for cat in les_categories if str(cat).lower() != 'nan' and str(cat).strip() != '']
 categories_triees = sorted(categories_propres)
 
-# 🚀 MAGIE : Si "Nouveauté" existe, on la retire de sa place alphabétique pour la mettre en PREMIER !
+# 2. Si "Nouveauté" existe (avec ou sans accent), on la force en TOUT PREMIER dans la liste
 if "Nouveauté" in categories_triees:
     categories_triees.remove("Nouveauté")
-    categories_menu = ["✨ Tous les rayons", "🌸 Nouveauté"] + [f"🌸 {cat}" for cat in categories_triees]
+    categories_menu = ["🌸 Nouveauté", "✨ Tous les rayons"] + [f"🌸 {cat}" for cat in categories_triees]
+elif "Nouveaute" in categories_triees:
+    categories_triees.remove("Nouveaute")
+    categories_menu = ["🌸 Nouveauté", "✨ Tous les rayons"] + [f"🌸 {cat}" for cat in categories_triees]
 else:
     categories_menu = ["✨ Tous les rayons"] + [f"🌸 {cat}" for cat in categories_triees]
 
-# Affichage de la boîte de sélection avec "Tous les rayons" ou "Nouveauté" par défaut
-# Si vous préférez afficher directement le rayon Nouveauté plutôt que "Tous les rayons" à la connexion :
-# changez l'index ci-dessous par : index=1 si "Nouveauté" in categories_menu else 0
+# 3. On affiche la liste (index=0 signifie que le premier élément, donc Nouveauté, est sélectionné d'office)
 choix_cat_brut = st.sidebar.selectbox("Faites votre shopping par rayon :", categories_menu, index=0)
-choix_cat = choix_cat_brut.replace("🌸 ", "").strip().lower()
+choix_cat = choix_cat_brut.replace("🌸 ", "").replace("✨ ", "").strip().lower()
+
+# 4. Filtrage des produits pour l'affichage
+if choix_cat_brut == "✨ Tous les rayons":
+    df_filtre = df
+else:
+    df_filtre = df[df[col_cat].str.lower().str.strip() == choix_cat]
 
 if choix_cat_brut == "✨ Tous les rayons":
     df_filtre = df
