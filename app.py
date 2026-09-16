@@ -447,7 +447,7 @@ for index, row in df_filtre.iterrows():
 st.markdown("---")
 st.caption("Application développée avec 🌸 pour Mes Bons Plans de Sarah. Tous droits réservés 2026.")
 
-                else:
+            else:
                     st.error(f"Impossible d'ajouter plus que le stock disponible ({stock_actuel}).")
             else:
                 st.session_state.panier[nom_produit] = {
