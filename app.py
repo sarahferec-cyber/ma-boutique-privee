@@ -36,6 +36,8 @@ if "connecte" not in st.session_state:
     st.session_state.connecte = False
 if "utilisateur" not in st.session_state:
     st.session_state.utilisateur = ""
+if "achat_reussi" not in st.session_state:
+    st.session_state.achat_reussi = False
 
 if not st.session_state.connecte:
     st.title("🎀 Espace Privé : La Boutique des Bons Plans 🌸")
@@ -47,11 +49,9 @@ if not st.session_state.connecte:
                 st.session_state.connecte = True
                 st.session_state.utilisateur = identifiant
                 st.rerun()
-if "achat_reussi" not in st.session_state:
-    st.session_state.achat_reussi = False
-
-else:
-                st.error("Identifiant ou mot de passe incorrect. ❌")st.stop()
+            else:
+                st.error("Identifiant ou mot de passe incorrect. ❌")
+    st.stop()
 
 st.title("🌸 Le Boutique des Bons Plans 🛍️")
 st.write(f"Coucou **{st.session_state.utilisateur.capitalize()}** !")
