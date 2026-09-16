@@ -75,15 +75,11 @@ COMPTES_AUTORISES = {
 # 4. URLS
 # ============================================================
 URL_SHEETS = (
-    "https://google.com"
-    "1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/"
-    "edit?usp=sharing"
+    "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing"
 )
 
 URL_MACRO_STOCK = (
-    "https://google.com"
-    "AKfycbxTep4v3fevHxUE0Cv6f6SE1IRie_xCNctecO_7Ez_XXhNUQJlhc46l6mkDe-FQk7s5lA/"
-    "exec"
+    "https://script.google.com/macros/s/AKfycbxTep4v3fevHxUE0Cv6f6SE1IRie_xCNctecO_7Ez_XXhNUQJlhc46l6mkDe-FQk7s5lA/exec"
 )
 
 # ============================================================
