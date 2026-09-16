@@ -118,21 +118,20 @@ elif "Nouveaute" in categories_triees:
 else:
     categories_menu = ["✨ Tous les rayons"] + [f"🌸 {cat}" for cat in categories_triees]
 
-# 3. On affiche la liste (index=0 signifie que le premier élément, donc Nouveauté, est sélectionné d'office)
+# 3. On affiche la liste (Nouveauté sélectionné d'office)
 choix_cat_brut = st.sidebar.selectbox("Faites votre shopping par rayon :", categories_menu, index=0)
 choix_cat = choix_cat_brut.replace("🌸 ", "").replace("✨ ", "").strip().lower()
 
-# 🔑 FILTRAGE INTELLIGENT : Permet à un produit d'avoir plusieurs catégories séparées par des virgules
+# 🔑 FILTRAGE INTELLIGENT : Gère le multi-rayons (ex: "hygiène, nouveauté")
 if choix_cat_brut == "✨ Tous les rayons":
     df_filtre = df
 else:
-    # On regarde si le rayon choisi est présent dans la case catégorie (même s'il y en a plusieurs)
-    df_filtre = df[df[col_cat].astype(str).str.lower().str.contains(choix_cat, na=False)]
-else:
-    df_filtre = df[df[col_cat].str.lower().str.strip() == choix_cat]
+    # Utilisation de .str.contains pour capter le mot même s'il y a d'autres catégories dans la case
+    df_filtre = df[df[col_cat].astype(str).str.lower().str.contains(choix_cat, na=False, regex=False)]
 
 st.subheader(f"💫 Sélection : {choix_cat_brut} ({len(df_filtre)} pépites)")
 cols = st.columns(3)
+
 
 for index, row in df_filtre.reset_index().iterrows():
     nom_produit = str(row[col_nom]).strip() if col_nom in row else "Produit sans nom"
