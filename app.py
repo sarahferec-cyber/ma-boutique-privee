@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 import io
+import time
 
 # 1. Configuration de la page style Amazon Mobile
 st.set_page_config(page_title="Mes Bons Plans de Sarah 🌸", page_icon="🛍️", layout="wide")
@@ -27,7 +28,6 @@ COMPTES_AUTORISES = {
     "laurie": "mojito",
     "invite": "bonplan11"
 }
-
 
 if "connecte" not in st.session_state:
     st.session_state.connecte = False
@@ -67,11 +67,10 @@ def load_clean_data():
         reponse.encoding = 'utf-8'
         data = pd.read_csv(io.StringIO(reponse.text), encoding="utf-8", engine="python", on_bad_lines='skip')
         
-        # NETTOYAGE INTELLIGENT DES COLONNES (Supprime les espaces, minuscules forcées et vire les accents)
+        # NETTOYAGE INTELLIGENT DES COLONNES
         data.columns = [str(c).strip().lower() for c in data.columns]
         data.columns = data.columns.str.replace('é', 'e').str.replace('è', 'e').str.replace('à', 'a')
         
-        # Nettoyage des guillemets dans les textes
         for col in data.select_dtypes(include=['object']).columns:
             data[col] = data[col].astype(str).str.replace('"', '').str.strip()
             
@@ -88,7 +87,7 @@ if df.empty:
 if "panier" not in st.session_state:
     st.session_state.panier = {}
 
-# Recherche adaptative des nouvelles colonnes nettoyées (sans majuscules ni accents)
+# Recherche adaptative des colonnes
 col_photo = 'photo produit' if 'photo produit' in df.columns else 'photo'
 col_nom = 'denomination' if 'denomination' in df.columns else 'denom'
 col_cat = 'categorie' if 'categorie' in df.columns else 'cat'
@@ -161,6 +160,8 @@ for index, row in df_filtre.reset_index().iterrows():
         elif nom_produit in st.session_state.panier:
             del st.session_state.panier[nom_produit]
         st.markdown('</div>', unsafe_allow_html=True)
+
+# --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
 if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
@@ -169,7 +170,6 @@ if st.session_state.panier:
     total_economies = 0.0
     texte_message = f"🌸 **Nouvelle commande de {st.session_state.utilisateur.capitalize()}** :\n"
     
-    # 1. Parcours et affichage du panier
     for article, infos in st.session_state.panier.items():
         qte = infos["quantite"]
         prix = infos["prix"]
@@ -181,42 +181,37 @@ if st.session_state.panier:
         st.sidebar.write(f"• {article} (x{qte}) — {prix*qte:.2f} €")
         texte_message += f"- {article} x{qte} ({prix:.2f}€/u)\n"
     
-    # 2. Récapitulatif financier
     st.sidebar.markdown(f"### Total : **{total_facture:.2f} €**")
     if total_economies > 0:
         st.sidebar.markdown(f"💖 *Vous économisez **{total_economies:.2f} €** sur cet achat !*")
-       # 3. Bouton de validation (Mise à jour automatique et fluide)
+        
     if st.sidebar.button("✨ Valider mon achat"):
-        
-        # 🟢 ÉTAPE 1 : ON SAUVEGARDE LE PANIER ET ON LE VIDE DANS LA SESSION
+        # 1. SAUVEGARDE ET VIDAGE IMMÉDIAT DU PANIER (Empêche le freeze visuel)
         panier_a_traiter = st.session_state.panier.copy()
-        st.session_state.panier = {} 
+        st.session_state.panier = {}
         
-        # 🟢 ÉTAPE 2 : EFFETS VISUELS IMMÉDIATS
+        # 2. EFFETS VISUELS ET MESSAGE DE SUCCÈS
         st.balloons()
         st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
         
-        # 🟢 ÉTAPE 3 : ENVOI SUR DISCORD
+        # 3. ENVOI DISCORD (Sécurisé avec un timeout strict de 3 secondes)
         try:
             msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
             requests.post(URL_DISCORD, json={"content": msg_discord}, timeout=3)
         except:
             pass
         
-        # 🟢 ÉTAPE 4 : MISE À JOUR DU STOCK GOOGLE SHEETS
+        # 4. ENVOI EN ARRIÈRE-PLAN DES STOCKS À GOOGLE APPS SCRIPT
         for article, infos in panier_a_traiter.items():
             payload_stock = {
                 "nom": article,
                 "quantite": infos["quantite"]
             }
+
             try:
-                requests.post(URL_MACRO_STOCK, json=payload_stock, timeout=2)
-            except:
-                pass
-        
-        # 🟢 ÉTAPE 5 : RECHARGEMENT SÉCURISÉ
-        # On utilise une pause légère pour laisser l'animation respirer, 
-        # puis un rerun isolé en fin de fonction qui s'exécute proprement.
-        import time
-        time.sleep(1.5)
-        st.rerun()
+         # Timeout agressif à 2 secondes pour éviter tout chargement infinirequests.post(URL_MACRO_STOCK, 
+        json=payload_stock, timeout=2)except:pass
+        # 5. PAUSE SÉCURISÉE AVANT ACTUALISATION FLUIDE
+time.sleep(1.5)
+st.rerun()
+<FollowUp>
