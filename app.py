@@ -196,15 +196,15 @@ if st.session_state.panier:
     st.sidebar.markdown(f"### Total : **{total_facture:.2f} €**")
     if total_economies > 0:
         st.sidebar.markdown(f"💖 *Vous économisez **{total_economies:.2f} €** sur cet achat !*")
-        
-    if st.sidebar.button("✨ Valider mon achat"):
+         if st.sidebar.button("✨ Valider mon achat"):
         panier_a_traiter = st.session_state.panier.copy()
         st.session_state.panier = {}
         
         # 🎈 LE RETOUR DES BALLONS NATIFS
         st.balloons()
         
-        st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
+        # 🌟 NOUVEAU MESSAGE OFFICIEL DE VALIDATION
+        st.success(f"Commande réalisée ! 🎉 Achat validé avec succès (Économie : {total_economies:.2f} €) !")
         
         try:
             msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
@@ -230,6 +230,8 @@ if st.session_state.panier:
         
         time.sleep(1.5)
         st.rerun()
+   
+   
 
 # --- SECTION : CONDITIONS GÉNÉRALES DE VENTE (CGV) ---
 st.sidebar.markdown("---")
