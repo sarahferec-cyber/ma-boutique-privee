@@ -190,6 +190,23 @@ for index, row in df_filtre.reset_index().iterrows():
             st.markdown(f"<h1 style='text-align: center; font-size: 50px;'>{icon}</h1>", unsafe_allow_html=True)
             
         st.markdown(f"### {nom_produit}")
+        
+        # ✨ LIGNE AJOUTÉE POUR LE PRIX AU KILO / LITRE AUTOMATIQUE
+        prix_unitaire = row['prix au kg / litre'] if 'prix au kg / litre' in row else "N/A"
+        st.markdown(f"<p style='color: #C71585; font-size: 13px; font-weight: 500; margin-top: -10px;'>⚖️ {prix_unitaire}</p>", unsafe_allow_html=True)
+        
+        fmt = row[col_fmt] if col_fmt in row else "N/A"
+        
+        try: max_stock = int(float(str(row[col_stock]).replace(' ', '')))
+        except: max_stock = 0
+        
+        quantite = 0
+            
+        if max_stock <= 0:
+            st.markdown("<p style='color: red; font-size: 14px;'>❌ <b>Rupture de stock !</b></p>", unsafe_allow_html=True)
+
+            
+        st.markdown(f"### {nom_produit}")
         fmt = row[col_fmt] if col_fmt in row else "N/A"
         
         try: max_stock = int(float(str(row[col_stock]).replace(' ', '')))
