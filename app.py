@@ -160,7 +160,8 @@ choix_cat = choix_cat.replace("✨", "").strip().lower()
 
 # 4. FILTRAGE MULTI-RAYONS COMPATIBLE VIRGULES
 if "tous les rayons" in choix_cat_brut.lower():
-    df_filtre = df
+    df_filtre = print("CONTENU DE INFOS :", infos)
+print("CLÉS DISPONIBLES :", infos.keys())
 else:
     df_filtre = df[df[col_cat].astype(str).str.lower().str.contains(choix_cat, na=False, regex=False)]
 
