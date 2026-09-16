@@ -134,8 +134,11 @@ for index, row in df_filtre.reset_index().iterrows():
         st.markdown(f"### {nom_produit}")
         fmt = row[col_fmt] if col_fmt in row else "N/A"
         
-        try: max_stock = int(float(str(row[col_stock]).replace(' ', '')))
+         try: max_stock = int(float(str(row[col_stock]).replace(' ', '')))
         except: max_stock = 0
+        
+        # 🔑 CORRECTION : On initialise la quantité à 0 pour éviter le plantage
+        quantite = 0
             
         if max_stock <= 0:
             st.markdown("<p style='color: red; font-size: 14px;'>❌ <b>Rupture de stock !</b></p>", unsafe_allow_html=True)
@@ -155,7 +158,7 @@ for index, row in df_filtre.reset_index().iterrows():
             st.markdown("<p style='font-size: 12px; color: gray;'>Quantité :</p>", unsafe_allow_html=True)
             quantite = st.number_input(f"Qté {nom_produit}", min_value=0, max_value=max_stock, value=st.session_state.panier.get(nom_produit, {}).get('quantite', 0), key=f"prod_{index}", label_visibility="collapsed")
         
-        # Enregistrement dans le panier avec le bon numéro de ligne Sheets (index + 2)
+        # Enregistrement dans le panier (index + 2 correspond à la ligne réelle de Google Sheets)
         if quantite > 0:
             st.session_state.panier[nom_produit] = {
                 "quantite": quantite, 
@@ -166,7 +169,9 @@ for index, row in df_filtre.reset_index().iterrows():
         elif nom_produit in st.session_state.panier:
             del st.session_state.panier[nom_produit]
         st.markdown('</div>', unsafe_allow_html=True)
+        
 # --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
+# (Placé tout à gauche avec 0 espace pour sortir proprement de la boucle For)
 if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
@@ -226,4 +231,3 @@ if st.session_state.panier:
         # 5. PAUSE SÉCURISÉE AVANT ACTUALISATION FLUIDE
         time.sleep(1.5)
         st.rerun()
-
