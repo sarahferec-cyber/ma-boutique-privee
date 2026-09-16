@@ -195,15 +195,7 @@ for index, row in df_filtre.reset_index().iterrows():
         elif nom_produit in st.session_state.panier:
             del st.session_state.panier[nom_produit]
         st.markdown('</div>', unsafe_allow_html=True)
-        
-# --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
-
-# 🌟 CORRECTION : Le message vert apparaît désormais directement dans la barre de gauche !
-if st.session_state.achat_reussi:
-    st.sidebar.success("Commande réalisée ! 🎉 Merci beaucoup! 😃😃😃.")
-    # On repasse à False pour que le message disparaisse si l'utilisateur recharge ou change de rayon
-    st.session_state.achat_reussi = False
-
+        # --- FIN DU FICHIER : LE PANIER ROSE, LIVRAISON ET VALIDATION ---
 if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
@@ -223,7 +215,32 @@ if st.session_state.panier:
         st.sidebar.write(f"• {article} (x{qte}) — {prix*qte:.2f} €")
         texte_message += f"- {article} x{qte} ({prix:.2f}€/u)\n"
     
-    st.sidebar.markdown(f"### Total : **{total_facture:.2f} €**")
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📦 Mode de retrait")
+    
+    # 🚚 OPTION DE LIVRAISON PAR KILOMÈTRE (Ajusté à 0.10 €)
+    option_livraison = st.sidebar.checkbox("Demander la livraison à domicile 🏠")
+    frais_livraison = 0.0
+    km_distance = 0
+    
+    if option_livraison:
+        km_distance = st.sidebar.slider(
+            "Distance de chez Sarah (en Km) :", 
+            min_value=1, 
+            max_value=50, 
+            value=5,
+            help="Le tarif est de 0,10 € par kilomètre."
+        )
+        frais_livraison = km_distance * 0.10  # 🔑 Modification du prix ici
+        st.sidebar.caption(f"🚗 Frais de livraison : +{frais_livraison:.2f} € ({km_distance} km)")
+    else:
+        st.sidebar.caption("🛒 Retrait gratuit en main propre chez Sarah")
+
+    # Calcul du montant final incluant la livraison
+    total_final_avec_livraison = total_facture + frais_livraison
+
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(f"### Total : **{total_final_avec_livraison:.2f} €**")
     if total_economies > 0:
         st.sidebar.markdown(f"💖 *Vous économisez **{total_economies:.2f} €** sur cet achat !*")
         
@@ -231,14 +248,21 @@ if st.session_state.panier:
         panier_a_traiter = st.session_state.panier.copy()
         st.session_state.panier = {}
         
-        # Activer le drapeau de succès pour le prochain rechargement
         st.session_state.achat_reussi = True
-        
-        # 🎈 Déclenchement des ballons
         st.balloons()
         
+        # Préparation du message Discord avec les infos de livraison ajustées
+        msg_discord = f"{texte_message}\n"
+        if option_livraison:
+            msg_discord += f"🚚 **Option Livraison activée :** {km_distance} Km (+{frais_livraison:.2f}€)\n"
+        else:
+            msg_discord += "🛒 **Retrait :** En main propre chez Sarah\n"
+            
+        msg_discord += f"💰 **Total Articles : {total_facture:.2f}€**\n"
+        msg_discord += f"⭐ **TOTAL À PAYER : {total_final_avec_livraison:.2f}€**\n"
+        msg_discord += f"🌸 **Économie réalisée : {total_economies:.2f}€**"
+        
         try:
-            msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
             requests.post(URL_DISCORD, json={"content": msg_discord}, timeout=3)
         except:
             pass
@@ -262,27 +286,3 @@ if st.session_state.panier:
         time.sleep(1.0)
         st.rerun()
 
-# --- SECTION : CONDITIONS GÉNÉRALES DE VENTE (CGV) ---
-st.sidebar.markdown("---")
-with st.sidebar.popover("📄 Conditions Générales de Vente (CGV)"):
-    st.markdown("""
-    ### ⚖️ Conditions Générales de Vente
-    En utilisant la boutique **"Mes Bons Plans de Sarah 🌸"**, vous acceptez les conditions suivantes :
-    
-    #### 1. 🛍️ Commandes & Réservations
-    * Ce site est un espace privé de réservation de produits.
-    * Toute validation de panier entraîne l'envoi d'une notification ferme via notre système de messagerie (Discord).
-    
-    #### 2. 📦 Stocks & Disponibilités
-    * Les stocks affichés sont synchronisés en temps réel avec notre inventaire.
-    * En cas de rupture de stock simultanée, la priorité est accordée à la première commande validée chronologiquement.
-    
-    #### 3. 💳 Modalités de Paiement & Retrait
-    * Aucun paiement direct n'est effectué sur cette application.
-    * Le règlement et la remise des articles s'effectuent selon les modalités convenues directement avec Sarah.
-    
-    #### 4. 🔒 Protection des Données (RGPD)
-    * Les identifiants de connexion servent uniquement à personnaliser votre expérience et sécuriser l'accès à la boutique.
-    * Aucune donnée personnelle n'est vendue ou partagée avec des tiers.
-    """)
-    st.caption("Mise à jour : Mars 2026")
