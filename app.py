@@ -200,20 +200,21 @@ if st.session_state.panier:
         except:
             pass
         
-        # 4. ENVOI EN ARRIÈRE-PLAN DES STOCKS À GOOGLE APPS SCRIPT
+              # 4. ENVOI EN ARRIÈRE-PLAN DES STOCKS À GOOGLE APPS SCRIPT
         for article, infos in panier_a_traiter.items():
             payload_stock = {
                 "nom": article,
                 "quantite": infos["quantite"]
             }
             try:
-                # Requête nettoyée et espacée correctement
-                requests.post(URL_MACRO_STOCK, json=payload_stock, timeout=2)
-            except:
+                # Session configurée pour forcer le POST lors des redirections Google (302)
+                session = requests.Session()
+                import json
+                session.post(
+                    URL_MACRO_STOCK, 
+                    data=json.dumps(payload_stock), 
+                    headers={"Content-Type": "application/json"},
+                    timeout=4
+                )
+            except Exception as e:
                 pass
-        
-        # 5. PAUSE SÉCURISÉE AVANT ACTUALISATION FLUIDE (Bien alignée à l'intérieur du bouton)
-        time.sleep(1.5)
-        st.rerun()
-
-      
