@@ -198,43 +198,26 @@ if "panier" not in st.session_state:
 # 7. CONNEXION
 # ============================================================
 if not st.session_state.connecte:
-    st.title(
-        "🎀 Espace Privé : La Boutique des Bons Plans 🌸"
-    )
+    st.title("🎀 Espace Privé : La Boutique des Bons Plans 🌸")
     with st.form("formulaire_connexion"):
-        identifiant = st.text_input(
-            "👤 Votre Identifiant :"
-        ).strip().lower()
-        mot_de_passe = st.text_input(
-            "🔑 Votre Mot de passe :",
-            type="password"
-        )
-        connexion = st.form_submit_button(
-            "✨ Entrer dans la boutique"
-        )
+        identifiant = st.text_input("👤 Votre Identifiant :").strip().lower()
+        mot_de_passe = st.text_input("🔑 Votre Mot de passe :", type="password")
+        connexion = st.form_submit_button("✨ Entrer dans la boutique")
         if connexion:
-            if (
-                identifiant in COMPTES_AUTORISES
-                and COMPTES_AUTORISES[identifiant]
-                == mot_de_passe
-            ):
+            if identifiant in COMPTES_AUTORISES and COMPTES_AUTORISES[identifiant] == mot_de_passe:
                 st.session_state.connecte = True
                 st.session_state.utilisateur = identifiant
                 st.rerun()
             else:
-                st.error(
-                    "Identifiant ou mot de passe incorrect. ❌"
-                )
+                st.error("Identifiant ou mot de passe incorrect. ❌")
     st.stop()
+
 # ============================================================
 # 8. EN-TÊTE
 # ============================================================
-st.title(
-    "🌸 La Boutique des Bons Plans 🛍️"
-)
-st.write(
-    f"Coucou **{st.session_state.utilisateur.capitalize()}** !"
-)
+st.title("🌸 La Boutique des Bons Plans 🛍️")
+st.write(f"Coucou **{st.session_state.utilisateur.capitalize()}** !")
+
 # ============================================================
 # 9. DÉCONNEXION
 # ============================================================
