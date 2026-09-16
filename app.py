@@ -106,7 +106,7 @@ les_categories = list(df[col_cat].unique()) if col_cat in df.columns else []
 
 # 1. On nettoie et on trie les catégories par ordre alphabétique
 categories_propres = [str(cat).strip().capitalize() for cat in les_categories if str(cat).lower() != 'nan' and str(cat).strip() != '']
-categories_triees = sorted(categories_propres)
+
 
 # 2. Si "Nouveauté" existe (avec ou sans accent), on la force en TOUT PREMIER dans la liste
 if "Nouveauté" in categories_triees:
