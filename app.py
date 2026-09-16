@@ -91,13 +91,7 @@ URL_MACRO_STOCK = (
 # 5. FONCTIONS UTILITAIRES
 # ============================================================
 def convertir_float(valeur, valeur_defaut=0.0):
-    """
-    Transforme proprement une valeur en nombre.
-    Accepte :
-    2.50
-    2,50
-    "2,50 €"
-    """
+    """Transforme proprement une valeur en nombre."""
     try:
         if pd.isna(valeur):
             return valeur_defaut
@@ -110,10 +104,9 @@ def convertir_float(valeur, valeur_defaut=0.0):
         return float(texte)
     except (ValueError, TypeError):
         return valeur_defaut
+
 def envoyer_discord(message):
-    """
-    Envoie un message sur Discord si le webhook est configuré.
-    """
+    """Envoie un message sur Discord si le webhook est configuré."""
     try:
         webhook = st.secrets.get("DISCORD_WEBHOOK", "")
         if not webhook:
@@ -126,10 +119,9 @@ def envoyer_discord(message):
         return response.status_code in [200, 204]
     except Exception:
         return False
+
 def load_clean_data():
-    """
-    Charge le Google Sheets en CSV et nettoie les colonnes.
-    """
+    """Charge le Google Sheets en CSV et nettoie les colonnes."""
     try:
         csv_url = (
             URL_SHEETS
@@ -172,9 +164,7 @@ def load_clean_data():
             .str.replace("ç", "c", regex=False)
         )
         # Nettoyage du contenu
-        for col in data.select_dtypes(
-            include=["object"]
-        ).columns:
+        for col in data.select_dtypes(include=["object"]).columns:
             data[col] = (
                 data[col]
                 .astype(str)
@@ -183,17 +173,12 @@ def load_clean_data():
             )
         return data
     except Exception as erreur:
-        st.error(
-            "❌ Impossible de charger les données Google Sheets."
-        )
-        st.caption(
-            f"Détail technique : {erreur}"
-        )
+        st.error("❌ Impossible de charger les données Google Sheets.")
+        st.caption(f"Détail technique : {erreur}")
         return pd.DataFrame()
+
 def trouver_colonne(dataframe, noms_possibles):
-    """
-    Retourne la première colonne trouvée dans la liste.
-    """
+    """Retourne la première colonne trouvée dans la liste."""
     for nom in noms_possibles:
         if nom in dataframe.columns:
             return nom
