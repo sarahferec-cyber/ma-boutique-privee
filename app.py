@@ -18,27 +18,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-        # 2. EFFETS VISUELS CUSTOMISÉS (Pluie de sous ! 💸)
-import streamlit.components.v1 as components
-        
-        # Injection d'une pluie de billets et de sacs de monnaie en HTML/JS canvas
-components.html("""
-            <script src="https://cdn.jsdelivr.net/npm/js-confetti@latest/dist/js-confetti.browser.js"></script>
-            <script>
-                const jsConfetti = new JSConfetti();
-                // Lance une explosion massive d'émojis de sous !
-                jsConfetti.addConfetti({
-                    emojis: ['💸', '💵', '💰', '💶', '🌸'],
-                    emojiSize: 50,
-                    confettiNumber: 80,
-                });
-            </script>
-        """, height=0)
-        
-        # Message de réussite rose
-st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
-
-
+     
 # 🔐 LISTE DES COMPTES AUTORISÉS
 COMPTES_AUTORISES = {
     "sarah": "shopping2026",
@@ -222,11 +202,28 @@ if st.session_state.panier:
         # 1. SAUVEGARDE ET VIDAGE IMMÉDIAT DU PANIER
         panier_a_traiter = st.session_state.panier.copy()
         st.session_state.panier = {}
+
+           # 2. EFFETS VISUELS CUSTOMISÉS (Pluie de sous ! 💸)
+import streamlit.components.v1 as components
         
-        # 2. EFFETS VISUELS ET MESSAGE DE SUCCÈS
-        st.balloons()
-        st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
+        # Injection d'une pluie de billets et de sacs de monnaie en HTML/JS canvas
+components.html("""
+            <script src="https://cdn.jsdelivr.net/npm/js-confetti@latest/dist/js-confetti.browser.js"></script>
+            <script>
+                const jsConfetti = new JSConfetti();
+                // Lance une explosion massive d'émojis de sous !
+                jsConfetti.addConfetti({
+                    emojis: ['💸', '💵', '💰', '💶', '🌸'],
+                    emojiSize: 50,
+                    confettiNumber: 80,
+                });
+            </script>
+        """, height=0)
         
+        # Message de réussite rose
+st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
+
+
         # 3. ENVOI DISCORD
         try:
             msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
