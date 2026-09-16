@@ -75,13 +75,13 @@ COMPTES_AUTORISES = {
 # 4. URLS
 # ============================================================
 URL_SHEETS = (
-    "https://docs.google.com/spreadsheets/d/"
+    "https://google.com"
     "1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/"
     "edit?usp=sharing"
 )
 
 URL_MACRO_STOCK = (
-    "https://script.google.com/macros/s/"
+    "https://google.com"
     "AKfycbxTep4v3fevHxUE0Cv6f6SE1IRie_xCNctecO_7Ez_XXhNUQJlhc46l6mkDe-FQk7s5lA/"
     "exec"
 )
@@ -240,7 +240,9 @@ if df.empty:
 # 11. RECHERCHE ET RECOMPOSITION DES COLONNES IMPORTÉES
 # ============================================================
 col_nom = trouver_colonne(df, ["produit", "nom", "articles", "article"])
-col_cat = trouver_colonne(df, ["categorie", "type", "rayon"])
+col_cat = trouver_colonn
+# Suite immédiate du code précédent
+e(df, ["categorie", "type", "rayon"])
 col_format = trouver_colonne(df, ["format", "taille", "volume", "poids"])
 col_lavages = trouver_colonne(df, ["lavages", "lavage", "quantite_lavages"])
 col_stock = trouver_colonne(df, ["quantite", "stock", "en_stock", "nbre", "nombre"])
@@ -290,5 +292,117 @@ else:
     
     if st.sidebar.button("✅ Valider ma commande", key="bouton_validation_panier"):
         with st.spinner("Prise en compte de votre commande en cours..."):
-Utilisez le code avec précaution.succes_total = Truedetails_commande_discord = []for nom_art, details_art in st.session_state.panier.items():payload = {"action": "retirer","produit": nom_art,"quantite": int(details_art["quantite"]),"utilisateur": st.session_state.utilisateur}try:res = requests.post(URL_MACRO_STOCK, json=payload, timeout=10)if res.status_code != 200:succes_total = Falseelse:details_commande_discord.append(f"- {details_art['quantite']}x {nom_art} ({details_art['prix']:.2f}€/u)")except Exception:succes_total = Falseif succes_total:msg_discord = f"🎉 Nouvelle commande de {st.session_state.utilisateur.capitalize()} !\n" + "\n".join(details_commande_discord) + f"\n\n💰 Total : {total_panier:.2f} €"envoyer_discord(msg_discord)st.session_state.panier = {}st.session_state.achat_reussi = Truest.rerun()else:st.error("❌ Une erreur est survenue lors de la mise à jour des stocks.")if st.session_state.achat_reussi:st.success("🎉 Félicitations ! Votre commande a bien été enregistrée.")st.session_state.achat_reussi = False============================================================13. FILTRAGE ET AFFICHAGE DU CATALOGUE PRODUITS============================================================df_filtre = df.copy()if col_cat and categorie_choisie != "Toutes":df_filtre = df_filtre[df_filtre[col_cat] == categorie_choisie]colonnes_produits = st.columns(3)for index, row in df_filtre.iterrows():nom_produit = row[col_nom]stock_actuel = int(convertir_float(row[col_stock]))if pd.isna(nom_produit) or str(nom_produit).strip() == "" or stock_actuel <= 0:continuepx_base = convertir_float(row[col_prix_base]) if col_prix_base else 0.0px_promo = convertir_float(row[col_prix_promo]) if col_prix_promo else px_basepourcentage_remise = int(((px_base - px_promo) / px_base) * 100) if px_base > px_promo else 0col_courante = colonnes_produits[index % 3]with col_courante:if pourcentage_remise > 0:texte_promo_html = f"""🔥 ÉCONOMIE : -{pourcentage_remise}%"""else:texte_promo_html = "Prix bas garanti ✨"st.markdown(f"""{nom_produit}📦 Format : {row[col_format] if col_format and not pd.isna(row[col_format]) else 'N/A'}{f"{px_base:.2f} €" if px_base > px_promo else ""}{px_promo:.2f} €{texte_promo_html}Disponibles : {stock_actuel} restant(s)""", unsafe_allow_html=True)quantite_selectionnee = st.number_input(f"Quantité pour {nom_produit}",min_value=1,max_value=stock_actuel,value=1,key=f"input_{index}")if st.button(f"🛒 Ajouter au panier", key=f"btn_{index}"):if nom_produit in st.session_state.panier:nvelle_qte = st.session_state.panier[nom_produit]["quantite"] + quantite_selectionneeif nvelle_qte <= stock_actuel:st.session_state.panier[nom_produit]["quantite"] = nvelle_qtest.toast(f"✅ Quantité mise à jour pour {nom_produit} !", icon="🛒")time.sleep(0.5)st.rerun()else:st.error(f"Impossible d'ajouter plus que le stock disponible ({stock_actuel}).")else:st.session_state.panier[nom_produit] = {"quantite": quantite_selectionnee,"prix": px_promo}st.toast(f"🛒 {nom_produit} ajouté au panier !", icon="✨")time.sleep(0.5)st.rerun()============================================================14. PIED DE PAGE============================================================st.markdown("---")st.caption("Application développée avec 🌸 pour Mes Bons Plans de Sarah. Tous droits réservés 2026.")
-<FollowUp>
+            succes_total = True
+            details_commande_discord = []
+            
+            for nom_art, details_art in st.session_state.panier.items():
+                payload = {
+                    "action": "retirer",
+                    "produit": nom_art,
+                    "quantite": int(details_art["quantite"]),
+                    "utilisateur": st.session_state.utilisateur
+                }
+                try:
+                    res = requests.post(URL_MACRO_STOCK, json=payload, timeout=10)
+                    if res.status_code != 200:
+                        succes_total = False
+                    else:
+                        details_commande_discord.append(f"- {details_art['quantite']}x {nom_art} ({details_art['prix']:.2f}€/u)")
+                except Exception:
+                    succes_total = False
+            
+            if succes_total:
+                msg_discord = f"🎉 **Nouvelle commande de {st.session_state.utilisateur.capitalize()} !**\n" + "\n".join(details_commande_discord) + f"\n\n💰 **Total : {total_panier:.2f} €**"
+                envoyer_discord(msg_discord)
+                
+                st.session_state.panier = {}
+                st.session_state.achat_reussi = True
+                st.rerun()
+            else:
+                st.error("❌ Une erreur est survenue lors de la mise à jour des stocks.")
+
+if st.session_state.achat_reussi:
+    st.success("🎉 Félicitations ! Votre commande a bien été enregistrée.")
+    st.session_state.achat_reussi = False
+# ============================================================
+# 13. FILTRAGE ET AFFICHAGE DU CATALOGUE PRODUITS
+# ============================================================
+df_filtre = df.copy()
+if col_cat and categorie_choisie != "Toutes":
+    df_filtre = df_filtre[df_filtre[col_cat] == categorie_choisie]
+
+colonnes_produits = st.columns(3)
+
+for index, row in df_filtre.iterrows():
+    nom_produit = row[col_nom]
+    stock_actuel = int(convertir_float(row[col_stock]))
+    
+    if pd.isna(nom_produit) or str(nom_produit).strip() == "" or stock_actuel <= 0:
+        continue
+        
+    px_base = convertir_float(row[col_prix_base]) if col_prix_base else 0.0
+    px_promo = convertir_float(row[col_prix_promo]) if col_prix_promo else px_base
+    
+    # Calcul dynamique du pourcentage de promotion
+    pourcentage_remise = int(((px_base - px_promo) / px_base) * 100) if px_base > px_promo else 0
+    
+    col_courante = colonnes_produits[index % 3]
+    
+    with col_courante:
+        if pourcentage_remise > 0:
+            texte_promo_html = f"""
+            <div style='background-color: #FF69B4; color: white; padding: 5px; border-radius: 10px; font-weight: bold; margin: 10px auto; width: fit-content; font-size: 14px;'>
+                🔥 ÉCONOMIE : -{pourcentage_remise}%
+            </div>
+            """
+        else:
+            texte_promo_html = "<div style='margin: 10px 0; color: #757575; font-size: 13px; font-style: italic;'>Prix bas garanti ✨</div>"
+
+        st.markdown(f"""
+        <div class="product-card">
+            <h3>{nom_produit}</h3>
+            <p style='color: gray; font-size: 14px;'>📦 Format : {row[col_format] if col_format and not pd.isna(row[col_format]) else 'N/A'}</p>
+            
+            <p style='margin-top: 10px; font-size: 18px;'>
+                <del style='color: #FF4D4D; font-size: 15px;'>{f"{px_base:.2f} €" if px_base > px_promo else ""}</del> 
+                <strong style='color: #2E8B57; font-size: 24px; margin-left: 8px;'>{px_promo:.2f} €</strong>
+            </p>
+            
+            {texte_promo_html}
+            
+            <p style='color: #C71585; font-weight: bold; margin-top: 10px;'>Disponibles : {stock_actuel} restant(s)</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        quantite_selectionnee = st.number_input(
+            f"Quantité pour {nom_produit}", 
+            min_value=1, 
+            max_value=stock_actuel, 
+            value=1, 
+            key=f"input_{index}"
+        )
+        
+        if st.button(f"🛒 Ajouter au panier", key=f"btn_{index}"):
+            if nom_produit in st.session_state.panier:
+                nvelle_qte = st.session_state.panier[nom_produit]["quantite"] + quantite_selectionnee
+                if nvelle_qte <= stock_actuel:
+                    st.session_state.panier[nom_produit]["quantite"] = nvelle_qte
+                    st.toast(f"✅ Quantité mise à jour pour {nom_produit} !", icon="🛒")
+                    time.sleep(0.5)
+                    st.rerun()
+                else:
+                    st.error(f"Impossible d'ajouter plus que le stock disponible ({stock_actuel}).")
+            else:
+                st.session_state.panier[nom_produit] = {
+                    "quantite": quantite_selectionnee,
+                    "prix": px_promo
+                }
+                st.toast(f"🛒 {nom_produit} ajouté au panier !", icon="✨")
+                time.sleep(0.5)
+                st.rerun()
+
+# ============================================================
+# 14. PIED DE PAGE
+# ============================================================
+st.markdown("---")
+st.caption("Application développée avec 🌸 pour Mes Bons Plans de Sarah. Tous droits réservés 2026.")
