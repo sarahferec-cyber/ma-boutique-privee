@@ -154,11 +154,15 @@ for index, row in df_filtre.reset_index().iterrows():
                 
             st.markdown("<p style='font-size: 12px; color: gray;'>Quantité :</p>", unsafe_allow_html=True)
             quantite = st.number_input(f"Qté {nom_produit}", min_value=0, max_value=max_stock, value=st.session_state.panier.get(nom_produit, {}).get('quantite', 0), key=f"prod_{index}", label_visibility="collapsed")
+                # REMPLACEZ VOTRE BLOC "if quantite > 0:" PAR CELUI-CI :
         if quantite > 0:
-            st.session_state.panier[nom_produit] = {"quantite": quantite, "prix": p_promo, "economie": (p_init - p_promo) * quantite if p_init > 0 else 0}
-        elif nom_produit in st.session_state.panier:
-            del st.session_state.panier[nom_produit]
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.session_state.panier[nom_produit] = {
+                "quantite": quantite, 
+                "prix": p_promo, 
+                "economie": (p_init - p_promo) * quantite if p_init > 0 else 0,
+                "ligne_sheets": index + 2  # On garde en mémoire la ligne exacte du tableau Sheets !
+            }
+
 
 # --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
 if st.session_state.panier:
