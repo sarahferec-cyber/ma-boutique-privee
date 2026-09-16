@@ -102,13 +102,21 @@ col_pinit = 'prix initial' if 'prix initial' in df.columns else 'initial'
 col_ppromo = 'prix promo' if 'prix promo' in df.columns else 'promo'
 
 st.sidebar.markdown("## 🎀 Navigation")
-les_categories = list(df[col_cat].unique()) if col_cat in df.columns else []
 
-# 1. On nettoie et on trie les catégories par ordre alphabétique
-categories_propres = [str(cat).strip().capitalize() for cat in les_categories if str(cat).lower() != 'nan' and str(cat).strip() != '']
+# 1. DECOUPAGE INTELLIGENT : On sépare les catégories par la virgule pour éviter les rayons doublons
+categories_uniques = set()
+if col_cat in df.columns:
+    for cellule in df[col_cat].dropna().astype(str):
+        # On découpe s'il y a une virgule (ex: "Lessive, Nouveauté" devient ["Lessive", "Nouveauté"])
+        for morceau in cellule.split(','):
+            nom_nettoye = morceau.strip().capitalize()
+            if nom_nettoye != '' and nom_nettoye.lower() != 'nan':
+                categories_uniques.add(nom_nettoye)
 
+# On transforme notre ensemble en liste triée par ordre alphabétique
+categories_triees = sorted(list(categories_uniques))
 
-# 2. Si "Nouveauté" existe (avec ou sans accent), on la force en TOUT PREMIER dans la liste
+# 2. Si "Nouveauté" existe, on la force en TOUT PREMIER dans la liste du menu
 if "Nouveauté" in categories_triees:
     categories_triees.remove("Nouveauté")
     categories_menu = ["🌸 Nouveauté", "✨ Tous les rayons"] + [f"🌸 {cat}" for cat in categories_triees]
@@ -117,6 +125,17 @@ elif "Nouveaute" in categories_triees:
     categories_menu = ["🌸 Nouveauté", "✨ Tous les rayons"] + [f"🌸 {cat}" for cat in categories_triees]
 else:
     categories_menu = ["✨ Tous les rayons"] + [f"🌸 {cat}" for cat in categories_triees]
+
+# 3. Affichage de la boîte de sélection (Nouveauté sélectionné d'office avec index=0)
+choix_cat_brut = st.sidebar.selectbox("Faites votre shopping par rayon :", categories_menu, index=0)
+choix_cat = choix_cat_brut.replace("🌸 ", "").replace("✨ ", "").strip().lower()
+
+# 4. FILTRAGE INTELLIGENT MULTI-RAYONS
+if choix_cat_brut == "✨ Tous les rayons":
+    df_filtre = df
+else:
+    # Utilisation de .str.contains pour capter le produit dans ses deux rayons à la fois
+    df_filtre = df[df[col_cat].astype(str).str.lower().str.contains(choix_cat, na=False, regex=False)]
 
 # 3. On affiche la liste (Nouveauté sélectionné d'office)
 choix_cat_brut = st.sidebar.selectbox("Faites votre shopping par rayon :", categories_menu, index=0)
