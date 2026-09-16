@@ -19,7 +19,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
         # 2. EFFETS VISUELS CUSTOMISÉS (Pluie de sous ! 💸)
-        import streamlit.components.v1 as components
+import streamlit.components.v1 as components
         
         # Injection d'une pluie de billets et de sacs de monnaie en HTML/JS canvas
         components.html("""
