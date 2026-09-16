@@ -107,13 +107,11 @@ st.sidebar.markdown("## 🎀 Navigation")
 categories_uniques = set()
 if col_cat in df.columns:
     for cellule in df[col_cat].dropna().astype(str):
-        # On découpe s'il y a une virgule (ex: "Lessive, Nouveauté" devient ["Lessive", "Nouveauté"])
         for morceau in cellule.split(','):
             nom_nettoye = morceau.strip().capitalize()
             if nom_nettoye != '' and nom_nettoye.lower() != 'nan':
                 categories_uniques.add(nom_nettoye)
 
-# On transforme notre ensemble en liste triée par ordre alphabétique
 categories_triees = sorted(list(categories_uniques))
 
 # 2. Si "Nouveauté" existe, on la force en TOUT PREMIER dans la liste du menu
@@ -126,31 +124,18 @@ elif "Nouveaute" in categories_triees:
 else:
     categories_menu = ["✨ Tous les rayons"] + [f"🌸 {cat}" for cat in categories_triees]
 
-# 3. Affichage de la boîte de sélection (Nouveauté sélectionné d'office avec index=0)
+# 3. UNIQUE boîte de sélection (L'index=0 affiche Nouveauté par défaut)
 choix_cat_brut = st.sidebar.selectbox("Faites votre shopping par rayon :", categories_menu, index=0)
 choix_cat = choix_cat_brut.replace("🌸 ", "").replace("✨ ", "").strip().lower()
 
-# 4. FILTRAGE INTELLIGENT MULTI-RAYONS
+# 4. FILTRAGE MULTI-RAYONS COMPATIBLE VIRGULES
 if choix_cat_brut == "✨ Tous les rayons":
     df_filtre = df
 else:
-    # Utilisation de .str.contains pour capter le produit dans ses deux rayons à la fois
-    df_filtre = df[df[col_cat].astype(str).str.lower().str.contains(choix_cat, na=False, regex=False)]
-
-# 3. On affiche la liste (Nouveauté sélectionné d'office)
-choix_cat_brut = st.sidebar.selectbox("Faites votre shopping par rayon :", categories_menu, index=0)
-choix_cat = choix_cat_brut.replace("🌸 ", "").replace("✨ ", "").strip().lower()
-
-# 🔑 FILTRAGE INTELLIGENT : Gère le multi-rayons (ex: "hygiène, nouveauté")
-if choix_cat_brut == "✨ Tous les rayons":
-    df_filtre = df
-else:
-    # Utilisation de .str.contains pour capter le mot même s'il y a d'autres catégories dans la case
     df_filtre = df[df[col_cat].astype(str).str.lower().str.contains(choix_cat, na=False, regex=False)]
 
 st.subheader(f"💫 Sélection : {choix_cat_brut} ({len(df_filtre)} pépites)")
 cols = st.columns(3)
-
 
 for index, row in df_filtre.reset_index().iterrows():
     nom_produit = str(row[col_nom]).strip() if col_nom in row else "Produit sans nom"
@@ -179,12 +164,10 @@ for index, row in df_filtre.reset_index().iterrows():
         try: max_stock = int(float(str(row[col_stock]).replace(' ', '')))
         except: max_stock = 0
         
-        # 🔑 CORRECTION : On initialise la quantité à 0 pour éviter le plantage
         quantite = 0
             
         if max_stock <= 0:
             st.markdown("<p style='color: red; font-size: 14px;'>❌ <b>Rupture de stock !</b></p>", unsafe_allow_html=True)
-            quantite = 0
         else:
             st.markdown(f"<p style='color: #8B5A6F; font-size: 14px;'>Format : {fmt} | Stock : <b>{max_stock}</b></p>", unsafe_allow_html=True)
             try:
@@ -200,7 +183,6 @@ for index, row in df_filtre.reset_index().iterrows():
             st.markdown("<p style='font-size: 12px; color: gray;'>Quantité :</p>", unsafe_allow_html=True)
             quantite = st.number_input(f"Qté {nom_produit}", min_value=0, max_value=max_stock, value=st.session_state.panier.get(nom_produit, {}).get('quantite', 0), key=f"prod_{index}", label_visibility="collapsed")
         
-        # Enregistrement dans le panier (index + 2 correspond à la ligne réelle de Google Sheets)
         if quantite > 0:
             st.session_state.panier[nom_produit] = {
                 "quantite": quantite, 
@@ -211,7 +193,12 @@ for index, row in df_filtre.reset_index().iterrows():
         elif nom_produit in st.session_state.panier:
             del st.session_state.panier[nom_produit]
         st.markdown('</div>', unsafe_allow_html=True)
-        # --- FIN DU FICHIER : LE PANIER ROSE, LIVRAISON ET VALIDATION ---
+
+# --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
+if st.session_state.achat_reussi:
+    st.sidebar.success("Commande réalisée ! 🎉 Votre stock est à jour.")
+    st.session_state.achat_reussi = False
+
 if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
@@ -234,25 +221,17 @@ if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 📦 Mode de retrait")
     
-    # 🚚 OPTION DE LIVRAISON PAR KILOMÈTRE (Ajusté à 0.10 €)
     option_livraison = st.sidebar.checkbox("Demander la livraison à domicile 🏠")
     frais_livraison = 0.0
     km_distance = 0
     
     if option_livraison:
-        km_distance = st.sidebar.slider(
-            "Distance de chez Sarah (en Km) :", 
-            min_value=1, 
-            max_value=50, 
-            value=5,
-            help="Le tarif est de 0,05 € par kilomètre."
-        )
-        frais_livraison = km_distance * 0.05  # 🔑 Modification du prix ici
+        km_distance = st.sidebar.slider("Distance de chez Sarah (en Km) :", min_value=1, max_value=50, value=5, help="Le tarif est de 0,10 € par kilomètre.")
+        frais_livraison = km_distance * 0.10  
         st.sidebar.caption(f"🚗 Frais de livraison : +{frais_livraison:.2f} € ({km_distance} km)")
     else:
         st.sidebar.caption("🛒 Retrait gratuit en main propre chez Sarah")
 
-    # Calcul du montant final incluant la livraison
     total_final_avec_livraison = total_facture + frais_livraison
 
     st.sidebar.markdown("---")
@@ -263,11 +242,9 @@ if st.session_state.panier:
     if st.sidebar.button("✨ Valider mon achat"):
         panier_a_traiter = st.session_state.panier.copy()
         st.session_state.panier = {}
-        
         st.session_state.achat_reussi = True
         st.balloons()
         
-        # Préparation du message Discord avec les infos de livraison ajustées
         msg_discord = f"{texte_message}\n"
         if option_livraison:
             msg_discord += f"🚚 **Option Livraison activée :** {km_distance} Km (+{frais_livraison:.2f}€)\n"
@@ -290,12 +267,7 @@ if st.session_state.panier:
             }
             try:
                 import json
-                requests.post(
-                    URL_MACRO_STOCK, 
-                    data=json.dumps(payload_stock), 
-                    headers={"Content-Type": "application/json"},
-                    timeout=3
-                )
+                requests.post(URL_MACRO_STOCK, data=json.dumps(payload_stock), headers={"Content-Type": "application/json"}, timeout=3)
             except:
                 pass
         
