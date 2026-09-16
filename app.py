@@ -196,7 +196,7 @@ if st.session_state.panier:
     st.sidebar.markdown(f"### Total : **{total_facture:.2f} €**")
     if total_economies > 0:
         st.sidebar.markdown(f"💖 *Vous économisez **{total_economies:.2f} €** sur cet achat !*")
-         if st.sidebar.button("✨ Valider mon achat"):
+    if st.sidebar.button("✨ Valider mon achat"):
         panier_a_traiter = st.session_state.panier.copy()
         st.session_state.panier = {}
         
