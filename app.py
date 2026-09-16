@@ -179,7 +179,7 @@ for index, row in df_filtre.reset_index().iterrows():
 
 # 🌟 CORRECTION : Le message vert apparaît désormais directement dans la barre de gauche !
 if st.session_state.achat_reussi:
-    st.sidebar.success("Commande réalisée ! 🎉 Votre stock est à jour.")
+    st.sidebar.success("Commande réalisée ! 🎉 Je vous remercie! :).")
     # On repasse à False pour que le message disparaisse si l'utilisateur recharge ou change de rayon
     st.session_state.achat_reussi = False
 
