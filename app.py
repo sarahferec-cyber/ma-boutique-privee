@@ -201,19 +201,8 @@ if st.session_state.panier:
         panier_a_traiter = st.session_state.panier.copy()
         st.session_state.panier = {}
         
-        # Effets visuels de pluie de billets ! 💸
-        import streamlit.components.v1 as components
-        components.html("""
-            <script src="https://jsdelivr.net"></script>
-            <script>
-                const jsConfetti = new JSConfetti();
-                jsConfetti.addConfetti({
-                    emojis: ['💸', '💵', '💰', '💶', '🌸'],
-                    emojiSize: 50,
-                    confettiNumber: 80,
-                });
-            </script>
-        """, height=0)
+        # 🎈 LE RETOUR DES BALLONS NATIFS
+        st.balloons()
         
         st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
         
@@ -249,9 +238,9 @@ with st.sidebar.popover("📄 Conditions Générales de Vente (CGV)"):
     ### ⚖️ Conditions Générales de Vente
     En utilisant la boutique **"Mes Bons Plans de Sarah 🌸"**, vous acceptez les conditions suivantes :
     
-    #### 1. 🛍️ Commandes & Reservations
+    #### 1. 🛍️ Commandes & Réservations
     * Ce site est un espace privé de réservation de produits.
-    * Toute validation de panier entraîne l'envoi d'une notification ferme via notre système de messagerie (Discord).
+    * Toute validation de panier entraînant l'envoi d'une notification ferme via notre système de messagerie (Discord).
     
     #### 2. 📦 Stocks & Disponibilités
     * Les stocks affichés sont synchronisés en temps réel avec notre inventaire.
