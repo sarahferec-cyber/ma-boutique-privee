@@ -4,6 +4,7 @@ import requests
 import io
 import time
 import json
+
 # ============================================================
 # 1. CONFIGURATION
 # ============================================================
@@ -12,6 +13,7 @@ st.set_page_config(
     page_icon="🛍️",
     layout="wide"
 )
+
 # ============================================================
 # 2. STYLE
 # ============================================================
@@ -53,6 +55,7 @@ h1, h2, h3 {
 }
 </style>
 """, unsafe_allow_html=True)
+
 # ============================================================
 # 3. COMPTES AUTORISÉS
 # ============================================================
@@ -67,6 +70,7 @@ COMPTES_AUTORISES = {
     "lesfilles": "promos",
     "invite": "bonplan11"
 }
+
 # ============================================================
 # 4. URLS
 # ============================================================
@@ -75,18 +79,13 @@ URL_SHEETS = (
     "1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/"
     "edit?usp=sharing"
 )
-# IMPORTANT :
-# Ne mets pas le webhook Discord directement dans le code.
-# Ajoute-le dans les Secrets Streamlit :
-#
-# DISCORD_WEBHOOK = "https://discord.com/api/webhooks/..."
-#
-# Puis le code récupérera st.secrets["DISCORD_WEBHOOK"]
+
 URL_MACRO_STOCK = (
     "https://script.google.com/macros/s/"
     "AKfycbxTep4v3fevHxUE0Cv6f6SE1IRie_xCNctecO_7Ez_XXhNUQJlhc46l6mkDe-FQk7s5lA/"
     "exec"
 )
+
 # ============================================================
 # 5. FONCTIONS UTILITAIRES
 # ============================================================
@@ -183,6 +182,7 @@ def trouver_colonne(dataframe, noms_possibles):
         if nom in dataframe.columns:
             return nom
     return None
+
 # ============================================================
 # 6. SESSION STATE
 # ============================================================
@@ -194,6 +194,7 @@ if "achat_reussi" not in st.session_state:
     st.session_state.achat_reussi = False
 if "panier" not in st.session_state:
     st.session_state.panier = {}
+
 # ============================================================
 # 7. CONNEXION
 # ============================================================
@@ -232,10 +233,9 @@ if st.sidebar.button("🚪 Se déconnecter"):
 # ============================================================
 df = load_clean_data()
 if df.empty:
-    st.warning(
-        "⚠️ Aucune donnée produit disponible."
-    )
+    st.warning("⚠️ Aucune donnée produit disponible.")
     st.stop()
+
 # ============================================================
 # 11. RECHERCHE ET RECOMPOSITION DES COLONNES IMPORTÉES
 # ============================================================
@@ -248,7 +248,7 @@ col_prix_base = trouver_colonne(df, ["prix_base", "prix_initial", "prix", "ancie
 col_prix_promo = trouver_colonne(df, ["prix_promo", "promo", "prix_reduit", "nouveau_prix"])
 
 if not col_nom or not col_stock:
-    st.error("❌ Les colonnes essentielles ('Produit' et 'Quantité') n'ont pas pu être détectées dans votre fichier.")
+    st.error("❌ Les colonnes essentielles ('Produit' et 'Quantité') n'ont pas pu être détectées.")
     st.stop()
 
 # ============================================================
@@ -256,11 +256,12 @@ if not col_nom or not col_stock:
 # ============================================================
 st.sidebar.header("🎯 Filtres de recherche")
 
-# Filtre par catégorie (Définit correctement 'categorie_choisie' avant la suite)
-categories_disponibles = ["Toutes"] + sorted(list(df[col_cat].dropna().unique())) if col_cat else ["Toutes"]
+if col_cat:
+    categories_disponibles = ["Toutes"] + sorted(list(df[col_cat].dropna().unique()))
+else:
+    categories_disponibles = ["Toutes"]
 categorie_choisie = st.sidebar.selectbox("Filtrer par rayon :", categories_disponibles)
 
-# Affichage du Panier dans la Sidebar
 st.sidebar.markdown("---")
 st.sidebar.header("🛒 Votre Panier")
 
@@ -287,505 +288,7 @@ else:
     st.sidebar.markdown("---")
     st.sidebar.subheader(f"Total : {total_panier:.2f} €")
     
-    # Bouton de validation finale du Panier
     if st.sidebar.button("✅ Valider ma commande", key="bouton_validation_panier"):
         with st.spinner("Prise en compte de votre commande en cours..."):
-            succes_total = True
-            details_commande_discord = []
-            
-            # Traitement de chaque article avec la macro Google Sheets
-            for nom_art, details_art in st.session_state.panier.items():
-                payload = {
-                    "action": "retirer",
-                    "produit": nom_art,
-                    "quantite": int(details_art["quantite"]),
-                    "utilisateur": st.session_state.utilisateur
-                }
-                try:
-                    res = requests.post(URL_MACRO_STOCK, json=payload, timeout=10)
-                    if res.status_code != 200:
-                        succes_total = False
-                    else:
-                        details_commande_discord.append(f"- {details_art['quantite']}x {nom_art} ({details_art['prix']:.2f}€/u)")
-                except Exception:
-                    succes_total = False
-            
-            if succes_total:
-                # Notification Discord
-                msg_discord = f"🎉 **Nouvelle commande de {st.session_state.utilisateur.capitalize()} !**\n" + "\n".join(details_commande_discord) + f"\n\n💰 **Total : {total_panier:.2f} €**"
-                envoyer_discord(msg_discord)
-                
-                st.session_state.panier = {}
-                st.session_state.achat_reussi = True
-                st.rerun()
-            else:
-                st.error("❌ Une erreur est survenue lors de la mise à jour des stocks. Veuillez réessayer.")
-
-if st.session_state.achat_reussi:
-    st.success("🎉 Félicitations ! Votre commande a bien été enregistrée et votre stock a été mis à jour.")
-    st.session_state.achat_reussi = False
-
-# ============================================================
-# 13. FILTRAGE ET AFFICHAGE DU CATALOGUE PRODUITS
-# ============================================================
-df_filtre = df.copy()
-if col_cat and categorie_choisie != "Toutes":
-    df_filtre = df_filtre[df_filtre[col_cat] == categorie_choisie]
-
-# Grid layout : 3 colonnes de produits par ligne
-colonnes_produits = st.columns(3)
-
-for index, row in df_filtre.iterrows():
-    nom_produit = row[col_nom]
-    stock_actuel = int(convertir_float(row[col_stock]))
-    
-    # Si l'article n'a pas de nom ou est hors-stock, on passe au suivant
-    if pd.isna(nom_produit) or str(nom_produit).strip() == "" or stock_actuel <= 0:
-        continue
-        
-    px_base = convertir_float(row[col_prix_base]) if col_prix_base else 0.0
-    px_promo = convertir_float(row[col_prix_promo]) if col_prix_promo else px_base
-    
-    # CALCUL DU POURCENTAGE DE PROMOTION
-    pourcentage_remise = int(((px_base - px_promo) / px_base) * 100) if px_base > px_promo else 0
-    
-    # Répartition équitable dans la grille
-    col_courante = colonnes_produits[index % 3]
-    
-    with col_courante:
-        # Construction du texte de la promotion sous forme de badge HTML
-        if pourcentage_remise > 0:
-            texte_promo_html = f"""
-            <div style='background-color: #FF69B4; color: white; padding: 5px; border-radius: 10px; font-weight: bold; margin: 10px auto; width: fit-content; font-size: 14px;'>
-                🔥 ÉCONOMIE : -{pourcentage_remise}%
-            </div>
-            """
-        else:
-            texte_promo_html = "<div style='margin: 10px 0; color: #757575; font-size: 13px; font-style: italic;'>Prix bas garanti ✨</div>"
-
-        st.markdown(f"""
-        <div class="product-card">
-            <h3>{nom_produit}</h3>
-            <p style='color: gray; font-size: 14px;'>📦 Format : {row[col_format] if col_format and not pd.isna(row[col_format]) else 'N/A'}</p>
-            
-            <p style='margin-top: 10px; font-size: 18px;'>
-                <del style='color: #FF4D4D; font-size: 15px;'>{f"{px_base:.2f} €" if px_base > px_promo else ""}</del> 
-                <strong style='color: #2E8B57; font-size: 24px; margin-left: 8px;'>{px_promo:.2f} €</strong>
-            </p>
-            
-            <!-- AFFICHAGE DU POURCENTAGE ICI -->
-            {texte_promo_html}
-            
-            <p style='color: #C71585; font-weight: bold; margin-top: 10px;'>Disponibles : {stock_actuel} restant(s)</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Sélecteur de quantité basé sur le stock réel du fichier Excel
-        quantite_selectionnee = st.number_input(
-            f"Quantité pour {nom_produit}", 
-            min_value=1, 
-            max_value=stock_actuel, 
-            value=1, 
-            key=f"input_{index}"
-        )
-        
-        if st.button(f"🛒 Ajouter au panier", key=f"btn_{index}"):
-            if nom_produit in st.session_state.panier:
-                nvelle_qte = st.session_state.panier[nom_produit]["quantite"] + quantite_selectionnee
-                if nvelle_qte <= stock_actuel:
-                    st.session_state.panier[nom_produit]["quantite"] = nvelle_qte
-                    st.toast(f"✅ Quantité mise à jour pour {nom_produit} !", icon="🛒")
-                    time.sleep(0.5)
-                    st.rerun()
-                else:
-                    st.error(f"Impossible d'ajouter plus que le stock disponible ({stock_actuel}).")
-            else:
-                st.session_state.panier[nom_produit] = {
-                    "quantite": quantite_selectionnee,
-                    "prix": px_promo
-                }
-                st.toast(f"🛒 {nom_produit} ajouté au panier !", icon="✨")
-                time.sleep(0.5)
-                st.rerun()
-
-# ============================================================
-# 14. PIED DE PAGE
-# ============================================================
-st.markdown("---")
-st.caption("Application développée avec 🌸 pour Mes Bons Plans de Sarah. Tous droits réservés 2026.")
-else:
-                    st.error(f"Impossible d'ajouter plus que le stock disponible ({stock_actuel}).")
-            else:
-                st.session_state.panier[nom_produit] = {
-                    "quantite": quantite_selectionnee,
-                    "prix": px_promo
-                }
-                st.toast(f"🛒 {nom_produit} ajouté au panier !", icon="✨")
-                time.sleep(0.5)
-                st.rerun()
-
-        st.markdown(
-            "</div>",
-            unsafe_allow_html=True
-        )
-# ============================================================
-# 21. MESSAGE APRÈS COMMANDE
-# ============================================================
-if st.session_state.achat_reussi:
-    st.sidebar.success(
-        "Commande réalisée ! 🎉 "
-        "Votre stock est à jour."
-    )
-    st.session_state.achat_reussi = False
-# ============================================================
-# 22. PANIER
-# ============================================================
-if st.session_state.panier:
-    st.sidebar.markdown("---")
-    st.sidebar.markdown(
-        "## 🛒 Votre Panier Rose"
-    )
-    total_facture = 0.0
-    total_economies = 0.0
-    texte_message = (
-        f"🌸 **Nouvelle commande de "
-        f"{st.session_state.utilisateur.capitalize()}** :\n"
-    )
-    # --------------------------------------------------------
-    # ARTICLES
-    # --------------------------------------------------------
-    for article, infos in st.session_state.panier.items():
-        qte = int(
-            infos.get(
-                "quantite",
-                1
-            )
-        )
-        prix = convertir_float(
-            infos.get(
-                "prix",
-                0
-            )
-        )
-        economie_unitaire = convertir_float(
-            infos.get(
-                "economie_unitaire",
-                0
-            )
-        )
-        # Économie totale pour cet article
-        economie_article = (
-            economie_unitaire * qte
-        )
-        # Total article
-        total_article = (
-            prix * qte
-        )
-        total_facture += (
-            total_article
-        )
-        total_economies += (
-            economie_article
-        )
-        st.sidebar.write(
-            f"• {article} "
-            f"(x{qte}) — "
-            f"{total_article:.2f} €"
-        )
-        texte_message += (
-            f"- {article} "
-            f"x{qte} "
-            f"({prix:.2f}€/u)\n"
-        )
-    # ========================================================
-    # LIVRAISON
-    # ========================================================
-    st.sidebar.markdown("---")
-    st.sidebar.markdown(
-        "### 📦 Mode de retrait"
-    )
-    option_livraison = st.sidebar.checkbox(
-        "Demander la livraison à domicile 🏠"
-    )
-    frais_livraison = 0.0
-    km_distance = 0
-    if option_livraison:
-        km_distance = st.sidebar.slider(
-            "Distance de chez Sarah (en Km) :",
-            min_value=1,
-            max_value=50,
-            value=5,
-            help=(
-                "Le tarif est de "
-                "0,10 € par kilomètre."
-            )
-        )
-        frais_livraison = (
-            km_distance * 0.10
-        )
-        st.sidebar.caption(
-            f"🚗 Frais de livraison : "
-            f"+{frais_livraison:.2f} € "
-            f"({km_distance} km)"
-        )
-    else:
-        st.sidebar.caption(
-            "🛒 Retrait gratuit en main propre chez Sarah"
-        )
-    # ========================================================
-    # TOTAL
-    # ========================================================
-    total_final_avec_livraison = (
-        total_facture
-        + frais_livraison
-    )
-    st.sidebar.markdown("---")
-    st.sidebar.markdown(
-        f"""
-        ### Total :
-        **{total_final_avec_livraison:.2f} €**
-        """
-    )
-    if total_economies > 0:
-        st.sidebar.markdown(
-            f"""
-            💖 Vous économisez
-            **{total_economies:.2f} €**
-            sur cet achat !
-            """
-        )
-    # ========================================================
-    # VALIDATION
-    # ========================================================
-    if st.sidebar.button(
-        "✨ Valider mon achat"
-    ):
-        # Copie du panier avant suppression
-        panier_a_traiter = {
-            article: infos.copy()
-            for article, infos
-            in st.session_state.panier.items()
-        }
-        # ----------------------------------------------------
-        # MESSAGE DISCORD
-        # ----------------------------------------------------
-        msg_discord = (
-            f"{texte_message}\n"
-        )
-        if option_livraison:
-            msg_discord += (
-                f"🚚 **Option Livraison activée :** "
-                f"{km_distance} Km "
-                f"(+{frais_livraison:.2f}€)\n"
-            )
-        else:
-            msg_discord += (
-                "🛒 **Retrait :** "
-                "En main propre chez Sarah\n"
-            )
-        msg_discord += (
-            f"💰 **Total Articles : "
-            f"{total_facture:.2f}€**\n"
-        )
-        msg_discord += (
-            f"⭐ **TOTAL À PAYER : "
-            f"{total_final_avec_livraison:.2f}€**\n"
-        )
-        msg_discord += (
-            f"🌸 **Économie réalisée : "
-            f"{total_economies:.2f}€**"
-        )
-        # ----------------------------------------------------
-        # ENVOI DISCORD
-        # ----------------------------------------------------
-        discord_ok = envoyer_discord(
-            msg_discord
-        )
-        # ----------------------------------------------------
-        # MISE À JOUR STOCK GOOGLE SHEETS
-        # ----------------------------------------------------
-        stock_ok = True
-        for article, infos in panier_a_traiter.items():
-            ligne_sheets = infos.get(
-                "ligne_sheets"
-            )
-            quantite = infos.get(
-                "quantite",
-                1
-            )
-            # Si l'information manque,
-            # on ne fait pas planter toute la commande.
-            if ligne_sheets is None:
-                stock_ok = False
-                continue
-            payload_stock = {
-                "ligne": int(
-                    ligne_sheets
-                ),
-                "quantite": int(
-                    quantite
-                )
-            }
-            try:
-                response_stock = requests.post(
-                    URL_MACRO_STOCK,
-                    data=json.dumps(
-                        payload_stock
-                    ),
-                    headers={
-                        "Content-Type":
-                            "application/json"
-                    },
-                    timeout=5
-                )
-                if response_stock.status_code not in [
-                    200,
-                    201,
-                    204
-                ]:
-                    stock_ok = False
-            except Exception:
-                stock_ok = False
-        # ----------------------------------------------------
-        # FIN DE COMMANDE
-        # ----------------------------------------------------
-        st.session_state.panier = {}
-        st.session_state.achat_reussi = True
-        st.balloons()
-        # Messages d'information
-        if not discord_ok:
-            st.sidebar.warning(
-                "⚠️ La commande est enregistrée, "
-                "mais la notification Discord "
-                "n'a pas pu être envoyée."
-            )
-        if not stock_ok:
-            st.sidebar.warning(
-                "⚠️ La commande est enregistrée, "
-                "mais une mise à jour du stock "
-                "n'a pas pu être effectuée."
-            )
-        time.sleep(1)
-        st.rerun()
-# ============================================================
-# 23. CONDITIONS GÉNÉRALES DE VENTE
-# ============================================================
-st.sidebar.markdown("---")
-with st.sidebar.popover(
-    "📄 Conditions Générales de Vente (CGV)"
-):
-    st.markdown(
-        """
-        ### ⚖️ Conditions Générales de Vente
-        En utilisant la boutique
-        **"Mes Bons Plans de Sarah 🌸"**,
-        vous acceptez les conditions suivantes :
-        #### 1. 🛍️ Commandes & Réservations
-        * Ce site est un espace privé de
-          réservation de produits.
-        * Toute validation de panier entraîne
-          l'envoi d'une notification via notre
-          système de messagerie Discord.
-        #### 2. 📦 Stocks & Disponibilités
-        * Les stocks affichés sont synchronisés
-          avec l'inventaire.
-        * En cas de rupture de stock simultanée,
-          la priorité est accordée à la première
-          commande validée chronologiquement.
-        #### 3. 💳 Modalités de Paiement & Retrait
-        * Aucun paiement direct n'est effectué
-          sur cette application.
-        * Le règlement et la remise des articles
-          s'effectuent selon les modalités
-          convenues directement avec Sarah.
-        #### 4. 🔒 Protection des Données (RGPD)
-        * Les identifiants de connexion servent
-          uniquement à personnaliser votre
-          expérience et sécuriser l'accès
-          à la boutique.
-        * Aucune donnée personnelle n'est vendue
-          ou partagée avec des tiers.
-        """
-    )
-    st.caption(
-        "Mise à jour : Septembre 2026"
-    )
-# ============================================================
-# 24. AVIS CLIENTS
-# ============================================================
-st.sidebar.markdown("---")
-st.sidebar.markdown(
-    "### 🌸 Votre Avis compte !"
-)
-with st.sidebar.form(
-    "formulaire_avis_complet",
-    clear_on_submit=True
-):
-    note_etoiles = st.slider(
-        "Notez votre expérience sur la boutique :",
-        min_value=1,
-        max_value=5,
-        value=5,
-        help=(
-            "1 = À améliorer, "
-            "5 = Parfait !"
-        )
-    )
-    avis_texte = st.text_area(
-        "Laissez-moi un commentaire ou une idée de produit : 📝",
-        placeholder=(
-            "Dites-moi ce que vous aimez "
-            "ou ce que je devrais améliorer "
-            "(points négatifs, produits manquants...)"
-        )
-    )
-    bouton_avis = st.form_submit_button(
-        "🚀 Envoyer mon avis"
-    )
-    if bouton_avis:
-        etoiles_visuelles = (
-            "⭐" * note_etoiles
-        )
-        if note_etoiles <= 2:
-            statut_avis = (
-                "⚠️ **AVIS REÇU "
-                "(À AMÉLIORER / POINT NÉGATIF)**"
-            )
-        else:
-            statut_avis = (
-                "✨ **Nouvel avis client reçu**"
-            )
-        commentaire = (
-            avis_texte.strip()
-            if avis_texte.strip()
-            else "Aucun commentaire écrit."
-        )
-        msg_discord_avis = (
-            f"{statut_avis}\n"
-            f"👤 **Par :** "
-            f"{st.session_state.utilisateur.capitalize()}\n"
-            f"📊 **Note :** "
-            f"{etoiles_visuelles} "
-            f"({note_etoiles}/5)\n"
-            f"💬 **Commentaire :** "
-            f"{commentaire}"
-        )
-        if envoyer_discord(
-            msg_discord_avis
-        ):
-            if note_etoiles <= 2:
-                st.sidebar.success(
-                    "Merci pour ce retour honnête ! "
-                    "Sarah va faire le nécessaire "
-                    "pour s'améliorer. 💖"
-                )
-            else:
-                st.sidebar.success(
-                    "Merci beaucoup pour votre "
-                    "superbe note ! 🌸"
-                )
-        else:
-            st.sidebar.error(
-                "Petit problème lors de l'envoi. "
-                "Vérifiez la configuration Discord."
-            )
+Utilisez le code avec précaution.succes_total = Truedetails_commande_discord = []for nom_art, details_art in st.session_state.panier.items():payload = {"action": "retirer","produit": nom_art,"quantite": int(details_art["quantite"]),"utilisateur": st.session_state.utilisateur}try:res = requests.post(URL_MACRO_STOCK, json=payload, timeout=10)if res.status_code != 200:succes_total = Falseelse:details_commande_discord.append(f"- {details_art['quantite']}x {nom_art} ({details_art['prix']:.2f}€/u)")except Exception:succes_total = Falseif succes_total:msg_discord = f"🎉 Nouvelle commande de {st.session_state.utilisateur.capitalize()} !\n" + "\n".join(details_commande_discord) + f"\n\n💰 Total : {total_panier:.2f} €"envoyer_discord(msg_discord)st.session_state.panier = {}st.session_state.achat_reussi = Truest.rerun()else:st.error("❌ Une erreur est survenue lors de la mise à jour des stocks.")if st.session_state.achat_reussi:st.success("🎉 Félicitations ! Votre commande a bien été enregistrée.")st.session_state.achat_reussi = False============================================================13. FILTRAGE ET AFFICHAGE DU CATALOGUE PRODUITS============================================================df_filtre = df.copy()if col_cat and categorie_choisie != "Toutes":df_filtre = df_filtre[df_filtre[col_cat] == categorie_choisie]colonnes_produits = st.columns(3)for index, row in df_filtre.iterrows():nom_produit = row[col_nom]stock_actuel = int(convertir_float(row[col_stock]))if pd.isna(nom_produit) or str(nom_produit).strip() == "" or stock_actuel <= 0:continuepx_base = convertir_float(row[col_prix_base]) if col_prix_base else 0.0px_promo = convertir_float(row[col_prix_promo]) if col_prix_promo else px_basepourcentage_remise = int(((px_base - px_promo) / px_base) * 100) if px_base > px_promo else 0col_courante = colonnes_produits[index % 3]with col_courante:if pourcentage_remise > 0:texte_promo_html = f"""🔥 ÉCONOMIE : -{pourcentage_remise}%"""else:texte_promo_html = "Prix bas garanti ✨"st.markdown(f"""{nom_produit}📦 Format : {row[col_format] if col_format and not pd.isna(row[col_format]) else 'N/A'}{f"{px_base:.2f} €" if px_base > px_promo else ""}{px_promo:.2f} €{texte_promo_html}Disponibles : {stock_actuel} restant(s)""", unsafe_allow_html=True)quantite_selectionnee = st.number_input(f"Quantité pour {nom_produit}",min_value=1,max_value=stock_actuel,value=1,key=f"input_{index}")if st.button(f"🛒 Ajouter au panier", key=f"btn_{index}"):if nom_produit in st.session_state.panier:nvelle_qte = st.session_state.panier[nom_produit]["quantite"] + quantite_selectionneeif nvelle_qte <= stock_actuel:st.session_state.panier[nom_produit]["quantite"] = nvelle_qtest.toast(f"✅ Quantité mise à jour pour {nom_produit} !", icon="🛒")time.sleep(0.5)st.rerun()else:st.error(f"Impossible d'ajouter plus que le stock disponible ({stock_actuel}).")else:st.session_state.panier[nom_produit] = {"quantite": quantite_selectionnee,"prix": px_promo}st.toast(f"🛒 {nom_produit} ajouté au panier !", icon="✨")time.sleep(0.5)st.rerun()============================================================14. PIED DE PAGE============================================================st.markdown("---")st.caption("Application développée avec 🌸 pour Mes Bons Plans de Sarah. Tous droits réservés 2026.")
+<FollowUp>
