@@ -285,22 +285,45 @@ if st.session_state.panier:
         
         time.sleep(1.0)
         st.rerun()
-# --- SECTION : BOÎTE À IDÉES & DEMANDES PRODUITS ---
+# --- SECTION : ESPACE AVIS, NOTES & AMÉLIORATIONS (LIGNE 290) ---
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 💡 Une idée ? Une demande ?")
-with st.sidebar.form("formulaire_suggestion", clear_on_submit=True):
-    suggestion_texte = st.text_area("Quel produit aimeriez-vous trouver bientôt chez Sarah ? 🌸", placeholder="Ex: Moins de sucre, un parfum de lessive spécifique, des bonbons précis...")
-    bouton_suggestion = st.form_submit_button("🚀 Envoyer mon idée")
+st.sidebar.markdown("### 🌸 Votre Avis compte !")
+
+with st.sidebar.form("formulaire_avis_complet", clear_on_submit=True):
+    # Système de notation de 1 à 5 étoiles
+    note_etoiles = st.slider("Notez votre expérience sur la boutique :", min_value=1, max_value=5, value=5, help="1 = À améliorer, 5 = Parfait !")
     
-    if bouton_suggestion and suggestion_texte.strip() != "":
-        # Préparation de la notification spéciale pour votre Discord
-        msg_suggestion = (
-            f"💡 **Nouvelle suggestion produit !**\n"
-            f"👤 **De la part de :** {st.session_state.utilisateur.capitalize()}\n"
-            f"📝 **Idée / Demande :** {suggestion_texte.strip()}"
+    # Zone de texte pour les retours (compliments ou critiques constructives)
+    avis_texte = st.text_area(
+        "Laissez-moi un commentaire ou une idée de produit : 📝", 
+        placeholder="Dites-moi ce que vous aimez ou ce que je devrais améliorer (points négatifs, produits manquants...)"
+    )
+    
+    bouton_avis = st.form_submit_button("🚀 Envoyer mon avis")
+    
+    if bouton_avis:
+        # Génération d'une ligne d'étoiles visuelle pour Discord (ex: ⭐⭐⭐⭐⭐)
+        etoiles_visuelles = "⭐" * note_etoiles
+        
+        # Détermination de l'émoji et de l'alerte selon la note (Alerte si note <= 2)
+        if note_etoiles <= 2:
+            statut_avis = "⚠️ **AVIS REÇU (À AMÉLIORER / POINT NÉGATIF)**"
+        else:
+            statut_avis = "✨ **Nouvel avis client reçu**"
+            
+        # Préparation du message complet pour votre Discord
+        msg_discord_avis = (
+            f"{statut_avis}\n"
+            f"👤 **Par :** {st.session_state.utilisateur.capitalize()}\n"
+            f"📊 **Note :** {etoiles_visuelles} ({note_etoiles}/5)\n"
+            f"💬 **Commentaire :** {avis_texte.strip() if avis_texte.strip() != '' else 'Aucun commentaire écrit.'}"
         )
+        
         try:
-            requests.post(URL_DISCORD, json={"content": msg_suggestion}, timeout=3)
-            st.sidebar.success("Merci ! Votre idée a bien été envoyée à Sarah. 💖")
+            requests.post(URL_DISCORD, json={"content": msg_discord_avis}, timeout=3)
+            if note_etoiles <= 2:
+                st.sidebar.success("Merci pour ce retour honnête ! Sarah va faire le nécessaire pour s'améliorer. 💖")
+            else:
+                st.sidebar.success("Merci beaucoup pour votre superbe note ! 🌸")
         except:
-            st.sidebar.error("Zut, petit problème réseau. Réessayez.")
+            st.sidebar.error("Petit problème réseau lors de l'envoi. Réessayez.")
