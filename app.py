@@ -51,8 +51,7 @@ if "achat_reussi" not in st.session_state:
     st.session_state.achat_reussi = False
 
 else:
-                st.error("Identifiant ou mot de passe incorrect. ❌")
-    st.stop()
+                st.error("Identifiant ou mot de passe incorrect. ❌")st.stop()
 
 st.title("🌸 Le Boutique des Bons Plans 🛍️")
 st.write(f"Coucou **{st.session_state.utilisateur.capitalize()}** !")
