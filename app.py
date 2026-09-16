@@ -1,4 +1,4 @@
-import streamlit as st
+bah import streamlit as st
 import pandas as pd
 import requests
 import io
@@ -262,7 +262,7 @@ if st.session_state.panier:
     for article, infos in st.session_state.panier.items():
         qte = infos["quantite"]
         prix = infos["prix"]
-        eco = infos["economie"]
+        eco = infos["st.write("DEBUG infos :", infos)
         
         total_facture += prix * qte
         total_economies += eco
