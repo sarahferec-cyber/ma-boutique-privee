@@ -229,9 +229,9 @@ if st.session_state.panier:
             min_value=1, 
             max_value=50, 
             value=5,
-            help="Le tarif est de 0,10 € par kilomètre."
+            help="Le tarif est de 0,05 € par kilomètre."
         )
-        frais_livraison = km_distance * 0.10  # 🔑 Modification du prix ici
+        frais_livraison = km_distance * 0.05  # 🔑 Modification du prix ici
         st.sidebar.caption(f"🚗 Frais de livraison : +{frais_livraison:.2f} € ({km_distance} km)")
     else:
         st.sidebar.caption("🛒 Retrait gratuit en main propre chez Sarah")
