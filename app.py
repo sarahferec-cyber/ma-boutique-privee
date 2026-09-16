@@ -128,7 +128,6 @@ if choix_cat_brut == "✨ Tous les rayons":
 else:
     # On regarde si le rayon choisi est présent dans la case catégorie (même s'il y en a plusieurs)
     df_filtre = df[df[col_cat].astype(str).str.lower().str.contains(choix_cat, na=False)]
-
 else:
     df_filtre = df[df[col_cat].str.lower().str.strip() == choix_cat]
 
