@@ -114,22 +114,52 @@ if col_cat in df.columns:
 
 categories_triees = sorted(list(categories_uniques))
 
-# 2. Si "Nouveauté" existe, on la force en TOUT PREMIER dans la liste du menu
-if "Nouveauté" in categories_triees:
-    categories_triees.remove("Nouveauté")
-    categories_menu = ["🌸 Nouveauté", "✨ Tous les rayons"] + [f"🌸 {cat}" for cat in categories_triees]
-elif "Nouveaute" in categories_triees:
-    categories_triees.remove("Nouveaute")
-    categories_menu = ["🌸 Nouveauté", "✨ Tous les rayons"] + [f"🌸 {cat}" for cat in categories_triees]
-else:
-    categories_menu = ["✨ Tous les rayons"] + [f"🌸 {cat}" for cat in categories_triees]
+# Dictionnaire de correspondance pour attribuer le bon émoji à chaque univers
+DICTIONNAIRE_EMOJIS = {
+    "nouveaute": "🔥",
+    "nouveauté": "🔥",
+    "lessive": "🧺",
+    "hygiene": "✨",
+    "hygiène": "✨",
+    "entretien": "🧼",
+    "menage": "🧹",
+    "ménage": "🧹",
+    "alimentaire": "🍭",
+    "animalerie": "🐱",
+    "beaute": "💄",
+    "beauté": "💄",
+    "boisson": "🥤",
+    "cuisine": "🍳"
+}
 
-# 3. UNIQUE boîte de sélection (L'index=0 affiche Nouveauté par défaut)
+# 2. Création du menu avec émojis adaptés
+categories_menu = []
+for cat in categories_triees:
+    cat_lower = cat.lower()
+    # On cherche si un émoji existe pour ce mot, sinon on met un émoji shopping par défaut 🌸
+    emoji = DICTIONNAIRE_EMOJIS.get(cat_lower, "🌸")
+    categories_menu.append(f"{emoji} {cat}")
+
+# On s'assure que "Tous les rayons" et "Nouveauté" soient placés au tout début dans le bon ordre
+# On nettoie la liste pour éviter les doublons textuels de Nouveauté
+categories_menu = [c for c in categories_menu if "nouveaut" not in c.lower()]
+
+if "Nouveauté" in categories_triees or "Nouveaute" in categories_triees:
+    categories_menu = ["🔥 Nouveauté", "✨ Tous les rayons"] + categories_menu
+else:
+    categories_menu = ["✨ Tous les rayons"] + categories_menu
+
+# 3. UNIQUE boîte de sélection (L'index=0 affiche Nouveauté en premier d'office)
 choix_cat_brut = st.sidebar.selectbox("Faites votre shopping par rayon :", categories_menu, index=0)
-choix_cat = choix_cat_brut.replace("🌸 ", "").replace("✨ ", "").strip().lower()
+
+# On nettoie la sélection pour retrouver le nom brut de la catégorie pour le filtrage
+choix_cat = choix_cat_brut
+for emj in DICTIONNAIRE_EMOJIS.values():
+    choix_cat = choix_cat.replace(emj, "")
+choix_cat = choix_cat.replace("✨", "").strip().lower()
 
 # 4. FILTRAGE MULTI-RAYONS COMPATIBLE VIRGULES
-if choix_cat_brut == "✨ Tous les rayons":
+if "tous les rayons" in choix_cat_brut.lower():
     df_filtre = df
 else:
     df_filtre = df[df[col_cat].astype(str).str.lower().str.contains(choix_cat, na=False, regex=False)]
@@ -145,12 +175,13 @@ for index, row in df_filtre.reset_index().iterrows():
     with cols[index % 3]:
         st.markdown('<div class="product-card">', unsafe_allow_html=True)
         cat_nom = str(row[col_cat]).lower() if col_cat in row else ""
-        if "lessive" in cat_nom: icon = "🧺"
-        elif "hygiene" in cat_nom or "hygiène" in cat_nom: icon = "✨"
-        elif "entretien" in cat_nom: icon = "🧼"
-        elif "alimentaire" in cat_nom: icon = "🍬"
-        elif "animalerie" in cat_nom: icon = "🐱"
-        else: icon = "🛍️"
+        
+        # Sélection de l'icône de la carte produit
+        icon = "🛍️"
+        for mot_cle, emj in DICTIONNAIRE_EMOJIS.items():
+            if mot_cle in cat_nom:
+                icon = emj
+                break
             
         lien_photo = str(row[col_photo]).strip() if col_photo in row else ""
         if lien_photo and lien_photo.startswith('http') and lien_photo != 'nan':
