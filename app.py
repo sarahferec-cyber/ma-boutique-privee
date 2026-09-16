@@ -258,6 +258,7 @@ if st.sidebar.button("🚪 Se déconnecter"):
     st.session_state.utilisateur = ""
     st.session_state.panier = {}
     st.rerun()
+    
 # ============================================================
 # 10. CHARGEMENT GOOGLE SHEETS
 # ============================================================
