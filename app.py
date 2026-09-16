@@ -225,7 +225,7 @@ st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_econ
 
 
         # 3. ENVOI DISCORD
-        try:
+try:
             msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
             requests.post(URL_DISCORD, json={"content": msg_discord}, timeout=3)
         except:
