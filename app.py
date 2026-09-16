@@ -233,3 +233,28 @@ if st.session_state.panier:
         # 5. PAUSE SÉCURISÉE AVANT ACTUALISATION FLUIDE
         time.sleep(1.5)
         st.rerun()
+# --- SECTION : CONDITIONS GÉNÉRALES DE VENTE (CGV) ---
+st.sidebar.markdown("---")
+with st.sidebar.popover("📄 Conditions Générales de Vente (CGV)"):
+    st.markdown("""
+    ### ⚖️ Conditions Générales de Vente
+    En utilisant la boutique **"Mes Bons Plans de Sarah 🌸"**, vous acceptez les conditions suivantes :
+    
+    #### 1. 🛍️ Commandes & Réservations
+    * Ce site est un espace privé de réservation de produits.
+    * Toute validation de panier entraîne l'envoi d'une notification ferme via notre système de messagerie (Discord).
+    
+    #### 2. 📦 Stocks & Disponibilités
+    * Les stocks affichés sont synchronisés en temps réel avec notre inventaire.
+    * En cas de rupture de stock simultanée, la priorité est accordée à la première commande validée chronologiquement.
+    
+    #### 3. 💳 Modalités de Paiement & Retrait
+    * Aucun paiement direct n'est effectué sur cette application.
+    * Le règlement et la remise des articles s'effectuent selon les modalités convenues directement avec Sarah (retrait en main propre ou selon accord privé).
+    
+    #### 4. 🔒 Protection des Données (RGPD)
+    * Les identifiants de connexion servent uniquement à personnaliser votre expérience et sécuriser l'accès à la boutique.
+    * Aucune donnée personnelle n'est vendue ou partagée avec des tiers.
+    """)
+    st.caption("Mise à jour : Mars 2026")
+
