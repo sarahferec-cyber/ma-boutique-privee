@@ -235,15 +235,11 @@ if df.empty:
 # ============================================================
 # 11. RECHERCHE ET RECOMPOSITION DES COLONNES IMPORTÉES
 # ============================================================
-col_nom = trouver_colonne(df, ["produit", "nom", "articles", "article"])
-col_cat = trouver_colonn
-# Suite immédiate du code précédent
-e(df, ["categorie", "type", "rayon"])
-col_format = trouver_colonne(df, ["format", "taille", "volume", "poids"])
-col_lavages = trouver_colonne(df, ["lavages", "lavage", "quantite_lavages"])
-col_stock = trouver_colonne(df, ["quantite", "stock", "en_stock", "nbre", "nombre"])
-col_prix_base = trouver_colonne(df, ["prix_base", "prix_initial", "prix", "ancien_prix"])
-col_prix_promo = trouver_colonne(df, ["prix_promo", "promo", "prix_reduit", "nouveau_prix"])
+NameError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
+Traceback:
+File "/mount/src/ma-boutique-privee/app.py", line 239, in <module>
+    col_cat = trouver_colonn
+              ^^^^^^^^^^^^^^
 
 if not col_nom or not col_stock:
     st.error("❌ Les colonnes essentielles ('Produit' et 'Quantité') n'ont pas pu être détectées.")
