@@ -166,8 +166,7 @@ for index, row in df_filtre.reset_index().iterrows():
         elif nom_produit in st.session_state.panier:
             del st.session_state.panier[nom_produit]
         st.markdown('</div>', unsafe_allow_html=True)
-
-# --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
+        # --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
 if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
@@ -211,4 +210,20 @@ if st.session_state.panier:
         for article, infos in panier_a_traiter.items():
             payload_stock = {
                 "ligne": infos["ligne_sheets"],
-                "quantite": infos["quantite"]}try:import jsonrequests.post(URL_MACRO_STOCK,data=json.dumps(payload_stock),headers={"Content-Type": "application/json"},timeout=3)except:pass# 5. PAUSE SÉCURISÉE AVANT ACTUALISATION FLUIDEtime.sleep(1.5)st.rerun()
+                "quantite": infos["quantite"]
+            }
+            try:
+                import json
+                requests.post(
+                    URL_MACRO_STOCK, 
+                    data=json.dumps(payload_stock), 
+                    headers={"Content-Type": "application/json"},
+                    timeout=3
+                )
+            except:
+                pass
+        
+        # 5. PAUSE SÉCURISÉE AVANT ACTUALISATION FLUIDE
+        time.sleep(1.5)
+        st.rerun()
+
