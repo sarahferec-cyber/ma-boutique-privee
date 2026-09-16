@@ -268,199 +268,95 @@ if df.empty:
     )
     st.stop()
 # ============================================================
-# 11. DÉTECTION DES COLONNES
+# 11. RECHERCHE ET RECOMPOSITION DES COLONNES IMPORTÉES
 # ============================================================
-col_photo = trouver_colonne(
-    df,
-    [
-        "photo produit",
-        "photo",
-        "image"
-    ]
-)
-col_nom = trouver_colonne(
-    df,
-    [
-        "denomination",
-        "denom",
-        "nom",
-        "produit"
-    ]
-)
-col_cat = trouver_colonne(
-    df,
-    [
-        "categorie",
-        "cat",
-        "category"
-    ]
-)
-col_fmt = trouver_colonne(
-    df,
-    [
-        "litre / gramme",
-        "litre/gramme",
-        "format",
-        "contenance"
-    ]
-)
-col_stock = trouver_colonne(
-    df,
-    [
-        "quantite",
-        "stock",
-        "quantité"
-    ]
-)
-col_pinit = trouver_colonne(
-    df,
-    [
-        "prix initial",
-        "initial",
-        "prix avant"
-    ]
-)
-col_ppromo = trouver_colonne(
-    df,
-    [
-        "prix promo",
-        "promo",
-        "prix"
-    ]
-)
-col_prix_unitaire = trouver_colonne(
-    df,
-    [
-        "prix au kg / litre",
-        "prix au kg/litre",
-        "prix au kg",
-        "prix au litre"
-    ]
-)
-# ============================================================
-# 12. VÉRIFICATION DES COLONNES ESSENTIELLES
-# ============================================================
-colonnes_manquantes = []
-if col_nom is None:
-    colonnes_manquantes.append("denomination")
-if col_cat is None:
-    colonnes_manquantes.append("categorie")
-if col_stock is None:
-    colonnes_manquantes.append("quantite")
-if col_pinit is None:
-    colonnes_manquantes.append("prix initial")
-if col_ppromo is None:
-    colonnes_manquantes.append("prix promo")
-if colonnes_manquantes:
-    st.error(
-        "❌ Certaines colonnes indispensables sont absentes "
-        "du Google Sheets :"
-    )
-    for colonne in colonnes_manquantes:
-        st.write(f"• `{colonne}`")
-    st.info(
-        "Vérifie les noms des colonnes dans ton Google Sheets."
-    )
+# Identification automatique des colonnes du Sheets nettoyé
+col_nom = trouver_colonne(df, ["produit", "nom", "articles", "article"])
+col_cat = trouver_colonne(df, ["categorie", "type", "rayon"])
+col_format = trouver_colonne(df, ["format", "taille", "volume", "poids"])
+col_lavages = trouver_colonne(df, ["lavages", "lavage", "quantite_lavages"])
+col_stock = trouver_colonne(df, ["quantite", "stock", "en_stock", "nbre", "nombre"])
+col_prix_base = trouver_colonne(df, ["prix_base", "prix_initial", "prix", "ancien_prix"])
+col_prix_promo = trouver_colonne(df, ["prix_promo", "promo", "prix_reduit", "nouveau_prix"])
+
+if not col_nom or not col_stock:
+    st.error("❌ Les colonnes essentielles ('Produit' et 'Quantité') n'ont pas pu être détectées dans votre fichier.")
     st.stop()
+
 # ============================================================
-# 13. NAVIGATION
+# 12. BARRE LATÉRALE : FILTRES & PANIER
 # ============================================================
-st.sidebar.markdown(
-    "## 🎀 Navigation"
-)
-# ============================================================
-# 14. CATÉGORIES
-# ============================================================
-categories_uniques = set()
-for cellule in (
-    df[col_cat]
-    .dropna()
-    .astype(str)
-):
-    for morceau in cellule.split(","):
-        nom_nettoye = morceau.strip().capitalize()
-        if (
-            nom_nettoye
-            and nom_nettoye.lower() != "nan"
-        ):
-            categories_uniques.add(
-                nom_nettoye
-            )
-categories_triees = sorted(
-    list(categories_uniques)
-)
-# ============================================================
-# 15. ÉMOJIS
-# ============================================================
-DICTIONNAIRE_EMOJIS = {
-    "nouveaute": "🔥",
-    "nouveauté": "🔥",
-    "lessive": "🧺",
-    "hygiene": "✨",
-    "hygiène": "✨",
-    "entretien": "🧼",
-    "menage": "🧹",
-    "ménage": "🧹",
-    "alimentaire": "🍭",
-    "animalerie": "🐱",
-    "beaute": "💄",
-    "beauté": "💄",
-    "boisson": "🥤",
-    "cuisine": "🍳"
-}
-# ============================================================
-# 16. MENU CATÉGORIES
-# ============================================================
-categories_menu = []
-for cat in categories_triees:
-    cat_lower = cat.lower()
-    emoji = DICTIONNAIRE_EMOJIS.get(
-        cat_lower,
-        "🌸"
-    )
-    categories_menu.append(
-        f"{emoji} {cat}"
-    )
-# Retirer les doublons de nouveauté
-categories_menu = [
-    c
-    for c in categories_menu
-    if "nouveaut" not in c.lower()
-]
-presence_nouveaute = any(
-    cat.lower() in ["nouveauté", "nouveaute"]
-    for cat in categories_triees
-)
-if presence_nouveaute:
-    categories_menu = [
-        "🔥 Nouveauté",
-        "✨ Tous les rayons"
-    ] + categories_menu
+st.sidebar.header("🎯 Filtres de recherche")
+
+# Filtre par catégorie (Définit correctement 'categorie_choisie')
+categories_disponibles = ["Toutes"] + sorted(list(df[col_cat].dropna().unique())) if col_cat else ["Toutes"]
+categorie_choisie = st.sidebar.selectbox("Filtrer par rayon :", categories_disponibles)
+
+# Affichage du Panier dans la Sidebar
+st.sidebar.markdown("---")
+st.sidebar.header("🛒 Votre Panier")
+
+if not st.session_state.panier:
+    st.sidebar.info("Votre panier est vide pour le moment. ✨")
 else:
-    categories_menu = [
-        "✨ Tous les rayons"
-    ] + categories_menu
-# ============================================================
-# 17. CHOIX CATÉGORIE
-# ============================================================
-choix_cat_brut = st.sidebar.selectbox(
-    "Faites votre shopping par rayon :",
-    categories_menu,
-    index=0
-)
-# Nettoyage du choix
-choix_cat = choix_cat_brut
-for emoji in DICTIONNAIRE_EMOJIS.values():
-    choix_cat = choix_cat.replace(
-        emoji,
-        ""
-    )
-choix_cat = (
-    choix_cat
-    .replace("✨", "")
-    .strip()
-    .lower()
-)
+    total_panier = 0.0
+    articles_a_supprimer = []
+    
+    for nom_art, details_art in list(st.session_state.panier.items()):
+        sous_total = details_art["quantite"] * details_art["prix"]
+        total_panier += sous_total
+        
+        st.sidebar.markdown(f"**{nom_art}**")
+        st.sidebar.caption(f"Qté : {details_art['quantite']} × {details_art['prix']:.2f} € = **{sous_total:.2f} €**")
+        
+        if st.sidebar.button(f"🗑️ Retirer", key=f"del_{nom_art}"):
+            articles_a_supprimer.append(nom_art)
+            
+    for art in articles_a_supprimer:
+        del st.session_state.panier[art]
+        st.rerun()
+
+    st.sidebar.markdown("---")
+    st.sidebar.subheader(f"Total : {total_panier:.2f} €")
+    
+    # Bouton de validation finale du Panier
+    if st.sidebar.button("✅ Valider ma commande", key="bouton_validation_panier"):
+        with st.spinner("Prise en compte de votre commande en cours..."):
+            succes_total = True
+            details_commande_discord = []
+            
+            # Traitement de chaque article avec la macro Google Sheets
+            for nom_art, details_art in st.session_state.panier.items():
+                payload = {
+                    "action": "retirer",
+                    "produit": nom_art,
+                    "quantite": int(details_art["quantite"]),
+                    "utilisateur": st.session_state.utilisateur
+                }
+                try:
+                    res = requests.post(URL_MACRO_STOCK, json=payload, timeout=10)
+                    if res.status_code != 200:
+                        succes_total = False
+                    else:
+                        details_commande_discord.append(f"- {details_art['quantite']}x {nom_art} ({details_art['prix']:.2f}€/u)")
+                except Exception:
+                    succes_total = False
+            
+            if succes_total:
+                # Notification Discord
+                msg_discord = f"🎉 **Nouvelle commande de {st.session_state.utilisateur.capitalize()} !**\n" + "\n".join(details_commande_discord) + f"\n\n💰 **Total : {total_panier:.2f} €**"
+                envoyer_discord(msg_discord)
+                
+                st.session_state.panier = {}
+                st.session_state.achat_reussi = True
+                st.rerun()
+            else:
+                st.error("❌ Une erreur est survenue lors de la mise à jour des stocks. Veuillez réessayer.")
+
+if st.session_state.achat_reussi:
+    st.success("🎉 Félicitations ! Votre commande a bien été enregistrée et votre stock a été mis à jour.")
+    st.session_state.achat_reussi = False
+
 # ============================================================
 # 13. FILTRAGE ET AFFICHAGE DU CATALOGUE PRODUITS
 # ============================================================
@@ -490,7 +386,6 @@ for index, row in df_filtre.iterrows():
     
     with col_courante:
         # Construction du texte de la promotion
-        texte_promo_html = ""
         if pourcentage_remise > 0:
             texte_promo_html = f"""
             <div style='background-color: #FF69B4; color: white; padding: 5px; border-radius: 10px; font-weight: bold; margin: 10px auto; width: fit-content; font-size: 14px;'>
@@ -535,6 +430,23 @@ for index, row in df_filtre.iterrows():
                     st.toast(f"✅ Quantité mise à jour pour {nom_produit} !", icon="🛒")
                     time.sleep(0.5)
                     st.rerun()
+                else:
+                    st.error(f"Impossible d'ajouter plus que le stock disponible ({stock_actuel}).")
+            else:
+                st.session_state.panier[nom_produit] = {
+                    "quantite": quantite_selectionnee,
+                    "prix": px_promo
+                }
+                st.toast(f"🛒 {nom_produit} ajouté au panier !", icon="✨")
+                time.sleep(0.5)
+                st.rerun()
+
+# ============================================================
+# 14. PIED DE PAGE
+# ============================================================
+st.markdown("---")
+st.caption("Application développée avec 🌸 pour Mes Bons Plans de Sarah. Tous droits réservés 2026.")
+
                 else:
                     st.error(f"Impossible d'ajouter plus que le stock disponible ({stock_actuel}).")
             else:
