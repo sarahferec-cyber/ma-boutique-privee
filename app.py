@@ -26,6 +26,8 @@ COMPTES_AUTORISES = {
     "ben": "groot",
     "helene": "mae",
     "laurie": "mojito",
+    "tiffany": "babysitter",
+    "lesfilles": "promos",
     "invite": "bonplan11"
 }
 
@@ -57,7 +59,7 @@ if st.sidebar.button("🚪 Se déconnecter"):
     st.rerun()
 
 URL_SHEETS = "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing"
-URL_DISCORD = "https://discord.com"
+URL_DISCORD = "https://discord.com/api/webhooks/1549589858765512704/gPHFkop5lN7wO7ITDsRsvfr_rymSGqsobjaz3lAkZ1LfSVXfSdLsX2NCaDWvhH2-pu1M"
 URL_MACRO_STOCK = "https://script.google.com/macros/s/AKfycbxTep4v3fevHxUE0Cv6f6SE1IRie_xCNctecO_7Ez_XXhNUQJlhc46l6mkDe-FQk7s5lA/exec"
 
 def load_clean_data():
