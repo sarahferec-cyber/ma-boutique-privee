@@ -2,11 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 import io
-
-import streamlit as st
-import pandas as pd
-import requests
-import io
+import time
 
 # 1. Configuration de la page style Amazon Mobile
 st.set_page_config(page_title="Mes Bons Plans de Sarah 🌸", page_icon="🛍️", layout="wide")
@@ -25,8 +21,12 @@ st.markdown("""
 # 🔐 LISTE DES COMPTES AUTORISÉS
 COMPTES_AUTORISES = {
     "sarah": "shopping2026",
-    "copine": "viprose",
-    "client1": "bonplan75"
+    "maman": "parfaite",
+    "carole": "unique",
+    "ben": "groot",
+    "helene": "mae",
+    "laurie": "mojito",
+    "invite": "bonplan11"
 }
 
 if "connecte" not in st.session_state:
@@ -35,7 +35,7 @@ if "utilisateur" not in st.session_state:
     st.session_state.utilisateur = ""
 
 if not st.session_state.connecte:
-    st.title("🎀 Espace Privé : Le Dressing des Bons Plans 🌸")
+    st.title("🎀 Espace Privé : La Boutique des Bons Plans 🌸")
     with st.form("formulaire_connexion"):
         identifiant = st.text_input("👤 Votre Identifiant :").strip().lower()
         mot_de_passe = st.text_input("🔑 Votre Mot de passe :", type="password")
@@ -48,7 +48,7 @@ if not st.session_state.connecte:
                 st.error("Identifiant ou mot de passe incorrect. ❌")
     st.stop()
 
-st.title("🌸 Le Dressing des Bons Plans 🛍️")
+st.title("🌸 Le Boutique des Bons Plans 🛍️")
 st.write(f"Coucou **{st.session_state.utilisateur.capitalize()}** !")
 
 if st.sidebar.button("🚪 Se déconnecter"):
@@ -58,6 +58,7 @@ if st.sidebar.button("🚪 Se déconnecter"):
 
 URL_SHEETS = "https://google.com"
 URL_DISCORD = "https://discord.com"
+URL_MACRO_STOCK = "https://google.com"
 
 def load_clean_data():
     try:
@@ -66,11 +67,10 @@ def load_clean_data():
         reponse.encoding = 'utf-8'
         data = pd.read_csv(io.StringIO(reponse.text), encoding="utf-8", engine="python", on_bad_lines='skip')
         
-        # NETTOYAGE INTELLIGENT DES COLONNES (Supprime les espaces, minuscules forcées et vire les accents)
+        # NETTOYAGE INTELLIGENT DES COLONNES
         data.columns = [str(c).strip().lower() for c in data.columns]
         data.columns = data.columns.str.replace('é', 'e').str.replace('è', 'e').str.replace('à', 'a')
         
-        # Nettoyage des guillemets dans les textes
         for col in data.select_dtypes(include=['object']).columns:
             data[col] = data[col].astype(str).str.replace('"', '').str.strip()
             
@@ -87,7 +87,7 @@ if df.empty:
 if "panier" not in st.session_state:
     st.session_state.panier = {}
 
-# Recherche adaptative des nouvelles colonnes nettoyées (sans majuscules ni accents)
+# Recherche adaptative des colonnes
 col_photo = 'photo produit' if 'photo produit' in df.columns else 'photo'
 col_nom = 'denomination' if 'denomination' in df.columns else 'denom'
 col_cat = 'categorie' if 'categorie' in df.columns else 'cat'
@@ -155,32 +155,75 @@ for index, row in df_filtre.reset_index().iterrows():
             st.markdown("<p style='font-size: 12px; color: gray;'>Quantité :</p>", unsafe_allow_html=True)
             quantite = st.number_input(f"Qté {nom_produit}", min_value=0, max_value=max_stock, value=st.session_state.panier.get(nom_produit, {}).get('quantite', 0), key=f"prod_{index}", label_visibility="collapsed")
         
+        # Enregistrement dans le panier avec le bon numéro de ligne Sheets (index + 2)
         if quantite > 0:
-            st.session_state.panier[nom_produit] = {"quantite": quantite, "prix": p_promo, "economie": (p_init - p_promo) * quantite if p_init > 0 else 0}
+            st.session_state.panier[nom_produit] = {
+                "quantite": quantite, 
+                "prix": p_promo, 
+                "economie": (p_init - p_promo) * quantite if p_init > 0 else 0,
+                "ligne_sheets": index + 2  
+            }
         elif nom_produit in st.session_state.panier:
             del st.session_state.panier[nom_produit]
         st.markdown('</div>', unsafe_allow_html=True)
-
+# --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
 if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
+    
     total_facture = 0.0
-    texte_message = ""
+    total_economies = 0.0
+    texte_message = f"🌸 **Nouvelle commande de {st.session_state.utilisateur.capitalize()}** :\n"
     
-    for article, info in st.session_state.panier.items():
-        sous_total = info['quantite'] * info['prix']
-        total_facture += sous_total
-        st.sidebar.write(f"💗 **{info['quantite']}x** {article} ({sous_total:.2f}€)")
-        texte_message += f"- {info['quantite']}x {article}\n"
+    for article, infos in st.session_state.panier.items():
+        qte = infos["quantite"]
+        prix = infos["prix"]
+        eco = infos["economie"]
         
-    st.sidebar.markdown(f"### Total : {total_facture:.2f} €")
+        total_facture += prix * qte
+        total_economies += eco
+        
+        st.sidebar.write(f"• {article} (x{qte}) — {prix*qte:.2f} €")
+        texte_message += f"- {article} x{qte} ({prix:.2f}€/u)\n"
     
-    if st.sidebar.button("🛍️ Envoyer ma commande"):
-        st.balloons()
-        t_fin = f"Client : {st.session_state.utilisateur.capitalize()}\n\n" + texte_message + f"Total : {total_facture:.2f}€"
-        requests.post(URL_DISCORD, json={"content": t_fin})
+    st.sidebar.markdown(f"### Total : **{total_facture:.2f} €**")
+    if total_economies > 0:
+        st.sidebar.markdown(f"💖 *Vous économisez **{total_economies:.2f} €** sur cet achat !*")
+        
+    if st.sidebar.button("✨ Valider mon achat"):
+        # 1. SAUVEGARDE ET VIDAGE IMMÉDIAT DU PANIER
+        panier_a_traiter = st.session_state.panier.copy()
         st.session_state.panier = {}
+        
+        # 2. EFFETS VISUELS ET MESSAGE DE SUCCÈS
+        st.balloons()
+        st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
+        
+        # 3. ENVOI DISCORD
+        try:
+            msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
+            requests.post(URL_DISCORD, json={"content": msg_discord}, timeout=3)
+        except:
+            pass
+        
+        # 4. ENVOI EN ARRIÈRE-PLAN DU NUMÉRO DE LIGNE À GOOGLE APPS SCRIPT
+        for article, infos in panier_a_traiter.items():
+            payload_stock = {
+                "ligne": infos["ligne_sheets"],
+                "quantite": infos["quantite"]
+            }
+            try:
+                import json
+                requests.post(
+                    URL_MACRO_STOCK, 
+                    data=json.dumps(payload_stock), 
+                    headers={"Content-Type": "application/json"},
+                    timeout=3
+                )
+            except:
+                pass
+        
+        # 5. PAUSE SÉCURISÉE AVANT ACTUALISATION FLUIDE
+        time.sleep(1.5)
         st.rerun()
-else:
-    st.sidebar.markdown("---")
-    st.sidebar.info("Votre panier est vide. Bon shopping ! ✨")
+
