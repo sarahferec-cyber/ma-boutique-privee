@@ -47,6 +47,9 @@ if not st.session_state.connecte:
                 st.session_state.connecte = True
                 st.session_state.utilisateur = identifiant
                 st.rerun()
+            if "achat_reussi" not in st.session_state:
+    st.session_state.achat_reussi = False
+
             else:
                 st.error("Identifiant ou mot de passe incorrect. ❌")
     st.stop()
@@ -174,6 +177,13 @@ for index, row in df_filtre.reset_index().iterrows():
         st.markdown('</div>', unsafe_allow_html=True)
         
 # --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
+
+# 🌟 NOUVEAUTÉ : Si un achat vient d'avoir lieu, on affiche le message de remerciement persistant !
+if st.session_state.achat_reussi:
+    st.success("Commande réalisée ! 🎉 Achat validé avec succès (Votre stock a été mis à jour et Sarah a reçu votre commande) !")
+    # On repasse à False pour que le message disparaisse si l'utilisateur change de rayon ou clique ailleurs
+    st.session_state.achat_reussi = False
+
 if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
@@ -196,15 +206,16 @@ if st.session_state.panier:
     st.sidebar.markdown(f"### Total : **{total_facture:.2f} €**")
     if total_economies > 0:
         st.sidebar.markdown(f"💖 *Vous économisez **{total_economies:.2f} €** sur cet achat !*")
+        
     if st.sidebar.button("✨ Valider mon achat"):
         panier_a_traiter = st.session_state.panier.copy()
         st.session_state.panier = {}
         
-        # 🎈 LE RETOUR DES BALLONS NATIFS
-        st.balloons()
+        # Activer le drapeau de succès pour le prochain rechargement
+        st.session_state.achat_reussi = True
         
-        # 🌟 NOUVEAU MESSAGE OFFICIEL DE VALIDATION
-        st.success(f"Commande réalisée ! 🎉 Achat validé avec succès (Économie : {total_economies:.2f} €) !")
+        # 🎈 Déclenchement des ballons
+        st.balloons()
         
         try:
             msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
@@ -228,10 +239,8 @@ if st.session_state.panier:
             except:
                 pass
         
-        time.sleep(1.5)
+        time.sleep(1.0)
         st.rerun()
-   
-   
 
 # --- SECTION : CONDITIONS GÉNÉRALES DE VENTE (CGV) ---
 st.sidebar.markdown("---")
@@ -242,7 +251,7 @@ with st.sidebar.popover("📄 Conditions Générales de Vente (CGV)"):
     
     #### 1. 🛍️ Commandes & Réservations
     * Ce site est un espace privé de réservation de produits.
-    * Toute validation de panier entraînant l'envoi d'une notification ferme via notre système de messagerie (Discord).
+    * Toute validation de panier entraîne l'envoi d'une notification ferme via notre système de messagerie (Discord).
     
     #### 2. 📦 Stocks & Disponibilités
     * Les stocks affichés sont synchronisés en temps réel avec notre inventaire.
