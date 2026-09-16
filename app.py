@@ -56,9 +56,9 @@ if st.sidebar.button("🚪 Se déconnecter"):
     st.session_state.utilisateur = ""
     st.rerun()
 
-URL_SHEETS = "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing"
-URL_DISCORD = "https://discord.com/api/webhooks/1548601979402719354/NHTueLki6Vo7SanErzCq-CE0bh4xb0cmO6hHZiR8gNLEZNGMVcWK1uapL2X2v3u2qw-d"
-URL_MACRO_STOCK = "https://script.google.com/macros/s/AKfycbxTep4v3fevHxUE0Cv6f6SE1IRie_xCNctecO_7Ez_XXhNUQJlhc46l6mkDe-FQk7s5lA/exec"
+URL_SHEETS = "https://google.com"
+URL_DISCORD = "https://discord.com"
+URL_MACRO_STOCK = "https://google.com"
 
 def load_clean_data():
     try:
@@ -154,15 +154,18 @@ for index, row in df_filtre.reset_index().iterrows():
                 
             st.markdown("<p style='font-size: 12px; color: gray;'>Quantité :</p>", unsafe_allow_html=True)
             quantite = st.number_input(f"Qté {nom_produit}", min_value=0, max_value=max_stock, value=st.session_state.panier.get(nom_produit, {}).get('quantite', 0), key=f"prod_{index}", label_visibility="collapsed")
-                # REMPLACEZ VOTRE BLOC "if quantite > 0:" PAR CELUI-CI :
+        
+        # Enregistrement dans le panier avec le bon numéro de ligne Sheets (index + 2)
         if quantite > 0:
             st.session_state.panier[nom_produit] = {
                 "quantite": quantite, 
                 "prix": p_promo, 
                 "economie": (p_init - p_promo) * quantite if p_init > 0 else 0,
-                "ligne_sheets": index + 2  # On garde en mémoire la ligne exacte du tableau Sheets !
+                "ligne_sheets": index + 2  
             }
-
+        elif nom_produit in st.session_state.panier:
+            del st.session_state.panier[nom_produit]
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
 if st.session_state.panier:
@@ -189,7 +192,7 @@ if st.session_state.panier:
         st.sidebar.markdown(f"💖 *Vous économisez **{total_economies:.2f} €** sur cet achat !*")
         
     if st.sidebar.button("✨ Valider mon achat"):
-        # 1. SAUVEGARDE ET VIDAGE IMMÉDIAT DU PANIER (Empêche le freeze visuel)
+        # 1. SAUVEGARDE ET VIDAGE IMMÉDIAT DU PANIER
         panier_a_traiter = st.session_state.panier.copy()
         st.session_state.panier = {}
         
@@ -197,28 +200,15 @@ if st.session_state.panier:
         st.balloons()
         st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
         
-        # 3. ENVOI DISCORD (Sécurisé avec un timeout strict de 3 secondes)
+        # 3. ENVOI DISCORD
         try:
             msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
             requests.post(URL_DISCORD, json={"content": msg_discord}, timeout=3)
         except:
             pass
         
-              # 4. ENVOI EN ARRIÈRE-PLAN DES STOCKS À GOOGLE APPS SCRIPT
+        # 4. ENVOI EN ARRIÈRE-PLAN DU NUMÉRO DE LIGNE À GOOGLE APPS SCRIPT
         for article, infos in panier_a_traiter.items():
             payload_stock = {
-                "nom": article,
-                "quantite": infos["quantite"]
-            }
-            try:
-                # Session configurée pour forcer le POST lors des redirections Google (302)
-                session = requests.Session()
-                import json
-                session.post(
-                    URL_MACRO_STOCK, 
-                    data=json.dumps(payload_stock), 
-                    headers={"Content-Type": "application/json"},
-                    timeout=4
-                )
-            except Exception as e:
-                pass
+                "ligne": infos["ligne_sheets"],
+                "quantite": infos["quantite"]}try:import jsonrequests.post(URL_MACRO_STOCK,data=json.dumps(payload_stock),headers={"Content-Type": "application/json"},timeout=3)except:pass# 5. PAUSE SÉCURISÉE AVANT ACTUALISATION FLUIDEtime.sleep(1.5)st.rerun()
