@@ -122,14 +122,13 @@ else:
 choix_cat_brut = st.sidebar.selectbox("Faites votre shopping par rayon :", categories_menu, index=0)
 choix_cat = choix_cat_brut.replace("🌸 ", "").replace("✨ ", "").strip().lower()
 
-# 4. Filtrage des produits pour l'affichage
+# 🔑 FILTRAGE INTELLIGENT : Permet à un produit d'avoir plusieurs catégories séparées par des virgules
 if choix_cat_brut == "✨ Tous les rayons":
     df_filtre = df
 else:
-    df_filtre = df[df[col_cat].str.lower().str.strip() == choix_cat]
+    # On regarde si le rayon choisi est présent dans la case catégorie (même s'il y en a plusieurs)
+    df_filtre = df[df[col_cat].astype(str).str.lower().str.contains(choix_cat, na=False)]
 
-if choix_cat_brut == "✨ Tous les rayons":
-    df_filtre = df
 else:
     df_filtre = df[df[col_cat].str.lower().str.strip() == choix_cat]
 
