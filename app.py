@@ -134,7 +134,7 @@ for index, row in df_filtre.reset_index().iterrows():
         st.markdown(f"### {nom_produit}")
         fmt = row[col_fmt] if col_fmt in row else "N/A"
         
-         try: max_stock = int(float(str(row[col_stock]).replace(' ', '')))
+        try: max_stock = int(float(str(row[col_stock]).replace(' ', '')))
         except: max_stock = 0
         
         # 🔑 CORRECTION : On initialise la quantité à 0 pour éviter le plantage
