@@ -174,7 +174,6 @@ for index, row in df_filtre.reset_index().iterrows():
         st.markdown('</div>', unsafe_allow_html=True)
         
 # --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
-# (Placé tout à gauche avec 0 espace pour sortir proprement de la boucle For)
 if st.session_state.panier:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🛒 Votre Panier Rose")
@@ -199,19 +198,15 @@ if st.session_state.panier:
         st.sidebar.markdown(f"💖 *Vous économisez **{total_economies:.2f} €** sur cet achat !*")
         
     if st.sidebar.button("✨ Valider mon achat"):
-        # 1. SAUVEGARDE ET VIDAGE IMMÉDIAT DU PANIER
         panier_a_traiter = st.session_state.panier.copy()
         st.session_state.panier = {}
-
-           # 2. EFFETS VISUELS CUSTOMISÉS (Pluie de sous ! 💸)
-import streamlit.components.v1 as components
         
-        # Injection d'une pluie de billets et de sacs de monnaie en HTML/JS canvas
-components.html("""
-            <script src="https://cdn.jsdelivr.net/npm/js-confetti@latest/dist/js-confetti.browser.js"></script>
+        # Effets visuels de pluie de billets ! 💸
+        import streamlit.components.v1 as components
+        components.html("""
+            <script src="https://jsdelivr.net"></script>
             <script>
                 const jsConfetti = new JSConfetti();
-                // Lance une explosion massive d'émojis de sous !
                 jsConfetti.addConfetti({
                     emojis: ['💸', '💵', '💰', '💶', '🌸'],
                     emojiSize: 50,
@@ -220,18 +215,14 @@ components.html("""
             </script>
         """, height=0)
         
-        # Message de réussite rose
-st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
-
-
-        # 3. ENVOI DISCORD
-try:
+        st.success(f"Achat validé avec succès ! 🎉 Vous avez économisé {total_economies:.2f} € !")
+        
+        try:
             msg_discord = f"{texte_message}\n💰 **Total : {total_facture:.2f}€**\n🌸 **Économie : {total_economies:.2f}€**"
             requests.post(URL_DISCORD, json={"content": msg_discord}, timeout=3)
-    except:
-pass
+        except:
+            pass
         
-        # 4. ENVOI EN ARRIÈRE-PLAN DU NUMÉRO DE LIGNE À GOOGLE APPS SCRIPT
         for article, infos in panier_a_traiter.items():
             payload_stock = {
                 "ligne": infos["ligne_sheets"],
@@ -248,9 +239,9 @@ pass
             except:
                 pass
         
-        # 5. PAUSE SÉCURISÉE AVANT ACTUALISATION FLUIDE
         time.sleep(1.5)
         st.rerun()
+
 # --- SECTION : CONDITIONS GÉNÉRALES DE VENTE (CGV) ---
 st.sidebar.markdown("---")
 with st.sidebar.popover("📄 Conditions Générales de Vente (CGV)"):
@@ -258,7 +249,7 @@ with st.sidebar.popover("📄 Conditions Générales de Vente (CGV)"):
     ### ⚖️ Conditions Générales de Vente
     En utilisant la boutique **"Mes Bons Plans de Sarah 🌸"**, vous acceptez les conditions suivantes :
     
-    #### 1. 🛍️ Commandes & Réservations
+    #### 1. 🛍️ Commandes & Reservations
     * Ce site est un espace privé de réservation de produits.
     * Toute validation de panier entraîne l'envoi d'une notification ferme via notre système de messagerie (Discord).
     
@@ -268,11 +259,10 @@ with st.sidebar.popover("📄 Conditions Générales de Vente (CGV)"):
     
     #### 3. 💳 Modalités de Paiement & Retrait
     * Aucun paiement direct n'est effectué sur cette application.
-    * Le règlement et la remise des articles s'effectuent selon les modalités convenues directement avec Sarah (retrait en main propre ou selon accord privé).
+    * Le règlement et la remise des articles s'effectuent selon les modalités convenues directement avec Sarah.
     
     #### 4. 🔒 Protection des Données (RGPD)
     * Les identifiants de connexion servent uniquement à personnaliser votre expérience et sécuriser l'accès à la boutique.
     * Aucune donnée personnelle n'est vendue ou partagée avec des tiers.
     """)
     st.caption("Mise à jour : Mars 2026")
-
