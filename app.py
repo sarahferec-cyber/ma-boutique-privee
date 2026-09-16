@@ -285,4 +285,22 @@ if st.session_state.panier:
         
         time.sleep(1.0)
         st.rerun()
-
+# --- SECTION : BOÎTE À IDÉES & DEMANDES PRODUITS ---
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 💡 Une idée ? Une demande ?")
+with st.sidebar.form("formulaire_suggestion", clear_on_submit=True):
+    suggestion_texte = st.text_area("Quel produit aimeriez-vous trouver bientôt chez Sarah ? 🌸", placeholder="Ex: Moins de sucre, un parfum de lessive spécifique, des bonbons précis...")
+    bouton_suggestion = st.form_submit_button("🚀 Envoyer mon idée")
+    
+    if bouton_suggestion and suggestion_texte.strip() != "":
+        # Préparation de la notification spéciale pour votre Discord
+        msg_suggestion = (
+            f"💡 **Nouvelle suggestion produit !**\n"
+            f"👤 **De la part de :** {st.session_state.utilisateur.capitalize()}\n"
+            f"📝 **Idée / Demande :** {suggestion_texte.strip()}"
+        )
+        try:
+            requests.post(URL_DISCORD, json={"content": msg_suggestion}, timeout=3)
+            st.sidebar.success("Merci ! Votre idée a bien été envoyée à Sarah. 💖")
+        except:
+            st.sidebar.error("Zut, petit problème réseau. Réessayez.")
