@@ -22,7 +22,7 @@ st.markdown("""
 import streamlit.components.v1 as components
         
         # Injection d'une pluie de billets et de sacs de monnaie en HTML/JS canvas
-        components.html("""
+components.html("""
             <script src="https://cdn.jsdelivr.net/npm/js-confetti@latest/dist/js-confetti.browser.js"></script>
             <script>
                 const jsConfetti = new JSConfetti();
