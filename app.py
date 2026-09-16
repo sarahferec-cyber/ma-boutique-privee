@@ -177,10 +177,10 @@ for index, row in df_filtre.reset_index().iterrows():
         
 # --- FIN DU FICHIER : LE PANIER ROSE ET LA VALIDATION SÉCURISÉE ---
 
-# 🌟 NOUVEAUTÉ : Si un achat vient d'avoir lieu, on affiche le message de remerciement persistant !
+# 🌟 CORRECTION : Le message vert apparaît désormais directement dans la barre de gauche !
 if st.session_state.achat_reussi:
-    st.success("Commande réalisée ! 🎉 Achat validé avec succès (Votre stock a été mis à jour et Sarah a reçu votre commande) !")
-    # On repasse à False pour que le message disparaisse si l'utilisateur change de rayon ou clique ailleurs
+    st.sidebar.success("Commande réalisée ! 🎉 Votre stock est à jour.")
+    # On repasse à False pour que le message disparaisse si l'utilisateur recharge ou change de rayon
     st.session_state.achat_reussi = False
 
 if st.session_state.panier:
