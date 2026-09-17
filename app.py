@@ -52,7 +52,7 @@ st.markdown(
     .produit-card {
         border: 1px solid #eeeeee;
         border-radius: 14px;
-        padding: 18px;
+        padding: 15px;
         margin-bottom: 12px;
         background-color: #ffffff;
         box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -65,10 +65,6 @@ st.markdown(
         color: #d32f2f;
         font-weight: bold;
     }
-    .prix {
-        font-size: 1.35rem;
-        font-weight: bold;
-    }
     .ancien-prix {
         text-decoration: line-through;
         color: #888888;
@@ -76,6 +72,10 @@ st.markdown(
     }
     .prix-promo {
         font-size: 1.35rem;
+        font-weight: bold;
+    }
+    .prix-normal {
+        font-size: 1.25rem;
         font-weight: bold;
     }
     .badge-promo {
@@ -86,21 +86,12 @@ st.markdown(
         color: #c2185b;
         font-weight: bold;
         font-size: 0.8rem;
-        margin-left: 6px;
     }
-    .resume-panier {
-        border-radius: 12px;
-        padding: 12px 16px;
-        background-color: #fafafa;
+    .panier-resume {
         border: 1px solid #eeeeee;
-    }
-    .total-panier {
-        font-size: 1.45rem;
-        font-weight: bold;
-    }
-    .petit-texte {
-        color: #777777;
-        font-size: 0.9rem;
+        border-radius: 12px;
+        padding: 12px;
+        background-color: #fafafa;
     }
     </style>
     """,
@@ -117,13 +108,13 @@ if "panier" not in st.session_state:
     st.session_state.panier = {}
 if "commande_envoyee" not in st.session_state:
     st.session_state.commande_envoyee = False
-if "derniere_commande" not in st.session_state:
-    st.session_state.derniere_commande = None
 # ============================================================
 # OUTILS
 # ============================================================
 def normaliser_texte(texte):
-    """Normalise un texte pour faciliter les comparaisons."""
+    """
+    Normalise un texte pour faciliter les comparaisons.
+    """
     if texte is None:
         return ""
     texte = str(texte).strip().lower()
@@ -154,8 +145,10 @@ def normaliser_texte(texte):
     return texte
 def trouver_colonne(objet, noms_possibles):
     """
-    Recherche une colonne en ignorant les accents,
-    les majuscules et les espaces superflus.
+    Recherche une colonne en ignorant :
+    - majuscules/minuscules
+    - accents
+    - espaces superflus
     """
     if hasattr(objet, "columns"):
         colonnes = list(objet.columns)
@@ -164,11 +157,39 @@ def trouver_colonne(objet, noms_possibles):
     else:
         colonnes = list(objet)
     for colonne in colonnes:
-        colonne_normalisee = normaliser_texte(colonne)
+        colonne_normalisee = normaliser_texte(
+            colonne
+        )
         for nom in noms_possibles:
             if colonne_normalisee == normaliser_texte(nom):
                 return colonne
     return None
+def convertir_nombre(valeur, valeur_defaut=0.0):
+    """
+    Convertit proprement une valeur venant du Google Sheet.
+    """
+    if valeur is None:
+        return valeur_defaut
+    try:
+        if pd.isna(valeur):
+            return valeur_defaut
+    except (ValueError, TypeError):
+        pass
+    valeur = str(valeur).strip()
+    if not valeur:
+        return valeur_defaut
+    # Gestion des nombres français :
+    # 12,50 € -> 12.50
+    valeur = valeur.replace(",", ".")
+    valeur = re.sub(
+        r"[^0-9.\-]",
+        "",
+        valeur
+    )
+    try:
+        return float(valeur)
+    except (ValueError, TypeError):
+        return valeur_defaut
 # ============================================================
 # CHARGEMENT DU GOOGLE SHEET
 # ============================================================
@@ -189,11 +210,31 @@ def charger_produits():
         + "/export?format=csv"
     )
     df = pd.read_csv(url_csv)
+    # Nettoyage des noms de colonnes
     df.columns = [
         str(colonne).strip()
         for colonne in df.columns
     ]
     return df
+# ============================================================
+# PHOTO
+# ============================================================
+def photo_produit(article):
+    colonne = trouver_colonne(
+        article.index,
+        [
+            "Photo produit",
+            "Photo",
+            "Image",
+            "Photo produit URL",
+        ]
+    )
+    if colonne is None:
+        return ""
+    valeur = article[colonne]
+    if pd.isna(valeur):
+        return ""
+    return str(valeur).strip()
 # ============================================================
 # STOCK
 # ============================================================
@@ -209,44 +250,23 @@ def obtenir_stock(article):
     )
     if colonne_stock is None:
         return 0
-    valeur = article[colonne_stock]
-    try:
-        if pd.isna(valeur):
-            return 0
-        return max(
-            0,
-            int(float(valeur))
+    return max(
+        0,
+        int(
+            convertir_nombre(
+                article[colonne_stock],
+                0
+            )
         )
-    except (ValueError, TypeError):
-        return 0
-# ============================================================
-# PRIX
-# ============================================================
-def convertir_prix(valeur):
-    if valeur is None:
-        return None
-    try:
-        if pd.isna(valeur):
-            return None
-    except (TypeError, ValueError):
-        pass
-    valeur = str(valeur).strip()
-    if not valeur:
-        return None
-    valeur = valeur.replace(",", ".")
-    valeur = re.sub(
-        r"[^0-9.\-]",
-        "",
-        valeur
     )
-    try:
-        return float(valeur)
-    except (ValueError, TypeError):
-        return None
+# ============================================================
+# PRIX INITIAL
+# ============================================================
 def obtenir_prix(article):
     colonne_prix = trouver_colonne(
         article.index,
         [
+            "Prix initial",
             "Prix",
             "Prix normal",
             "Tarif",
@@ -254,12 +274,13 @@ def obtenir_prix(article):
     )
     if colonne_prix is None:
         return 0.0
-    prix = convertir_prix(
-        article[colonne_prix]
+    return convertir_nombre(
+        article[colonne_prix],
+        0.0
     )
-    if prix is None:
-        return 0.0
-    return prix
+# ============================================================
+# PRIX PROMO
+# ============================================================
 def obtenir_prix_promo(article):
     colonne = trouver_colonne(
         article.index,
@@ -272,26 +293,30 @@ def obtenir_prix_promo(article):
     )
     if colonne is None:
         return None
-    prix = convertir_prix(
-        article[colonne]
+    prix = convertir_nombre(
+        article[colonne],
+        0.0
     )
-    if prix is None or prix <= 0:
+    if prix <= 0:
         return None
     return prix
+# ============================================================
+# PRIX FINAL
+# ============================================================
 def prix_final(article):
     promo = obtenir_prix_promo(article)
     if promo is not None:
         return promo
     return obtenir_prix(article)
 # ============================================================
-# INFORMATIONS PRODUIT
+# NOM PRODUIT
 # ============================================================
 def nom_produit(article):
     colonne = trouver_colonne(
         article.index,
         [
-            "Dénomination",
             "Denomination",
+            "Dénomination",
             "Produit",
             "Nom",
             "Article",
@@ -302,36 +327,42 @@ def nom_produit(article):
     valeur = article[colonne]
     if pd.isna(valeur):
         return "Produit sans nom"
-    return str(valeur).strip()
+    valeur = str(valeur).strip()
+    if not valeur:
+        return "Produit sans nom"
+    return valeur
+# ============================================================
+# CATÉGORIE
+# ============================================================
 def categorie_produit(article):
     colonne = trouver_colonne(
         article.index,
         [
-            "Catégorie",
             "Categorie",
+            "Catégorie",
             "Catégorie produit",
             "Famille",
         ]
     )
     if colonne is None:
         return "Autres"
-    valeur = article.get(
-        colonne,
-        ""
-    )
+    valeur = article[colonne]
     if pd.isna(valeur):
         return "Autres"
     valeur = str(valeur).strip()
     if not valeur:
         return "Autres"
     return valeur
-def description_produit(article):
+# ============================================================
+# LITRE / GRAMME
+# ============================================================
+def format_produit(article):
     colonne = trouver_colonne(
         article.index,
         [
-            "Description",
-            "Détails",
-            "Details",
+            "Litre / Gramme",
+            "Litre/Gramme",
+            "Litre / Grammes",
         ]
     )
     if colonne is None:
@@ -339,7 +370,49 @@ def description_produit(article):
     valeur = article[colonne]
     if pd.isna(valeur):
         return ""
-    return str(valeur).strip()
+    valeur = str(valeur).strip()
+    if not valeur:
+        return ""
+    return valeur
+# ============================================================
+# PRIX AU KG / LITRE
+# ============================================================
+def prix_kg_litre(article):
+    colonne = trouver_colonne(
+        article.index,
+        [
+            "Prix au Kg / Litre",
+            "Prix au Kg/Litre",
+            "Prix au Kg",
+            "Prix au Litre",
+        ]
+    )
+    if colonne is None:
+        return ""
+    valeur = article[colonne]
+    if pd.isna(valeur):
+        return ""
+    valeur = str(valeur).strip()
+    if not valeur:
+        return ""
+    return valeur
+# ============================================================
+# DESCRIPTION
+# ============================================================
+def description_produit(article):
+    # Ton fichier ne possède pas de colonne Description.
+    # On utilise donc le format Litre / Gramme
+    # comme information complémentaire.
+    infos = []
+    format_article = format_produit(article)
+    if format_article:
+        infos.append(format_article)
+    prix_unitaire = prix_kg_litre(article)
+    if prix_unitaire:
+        infos.append(
+            f"{prix_unitaire} / kg ou litre"
+        )
+    return " • ".join(infos)
 # ============================================================
 # PANIER
 # ============================================================
@@ -368,7 +441,7 @@ def ajouter_panier(article):
             "quantite": 1,
             "prix": prix,
         }
-def augmenter_quantite(nom, df):
+def augmenter_panier(nom, df):
     if nom not in st.session_state.panier:
         return
     lignes = df[
@@ -380,19 +453,18 @@ def augmenter_quantite(nom, df):
     ]
     if lignes.empty:
         return
-    stock = obtenir_stock(
-        lignes.iloc[0]
-    )
-    quantite = (
+    article = lignes.iloc[0]
+    stock = obtenir_stock(article)
+    quantite_actuelle = (
         st.session_state.panier[nom]["quantite"]
     )
-    if quantite >= stock:
+    if quantite_actuelle >= stock:
         st.warning(
             f"⚠️ Stock maximum atteint pour {nom}."
         )
         return
     st.session_state.panier[nom]["quantite"] += 1
-def diminuer_quantite(nom):
+def retirer_panier(nom):
     if nom not in st.session_state.panier:
         return
     st.session_state.panier[nom]["quantite"] -= 1
@@ -401,8 +473,6 @@ def diminuer_quantite(nom):
         <= 0
     ):
         del st.session_state.panier[nom]
-def retirer_panier(nom):
-    diminuer_quantite(nom)
 def vider_panier():
     st.session_state.panier = {}
 def calculer_total():
@@ -414,12 +484,12 @@ def calculer_total():
         )
     return total
 def calculer_nombre_articles():
-    total = 0
+    nombre = 0
     for article in st.session_state.panier.values():
-        total += int(
+        nombre += int(
             article["quantite"]
         )
-    return total
+    return nombre
 def calculer_economie(df):
     economie = 0.0
     for nom, article_panier in (
@@ -578,7 +648,8 @@ if not st.session_state.connecte:
         use_container_width=True
     ):
         if (
-            utilisateur in COMPTES_AUTORISES
+            utilisateur
+            in COMPTES_AUTORISES
             and mot_de_passe
             == COMPTES_AUTORISES[
                 utilisateur
@@ -626,17 +697,19 @@ with col2:
         st.session_state.utilisateur = ""
         st.session_state.panier = {}
         st.rerun()
-nombre_articles_panier = (
+nombre_articles = (
     calculer_nombre_articles()
 )
-st.caption(
+message_bienvenue = (
     f"Bienvenue "
     f"{st.session_state.utilisateur} 🌸"
-    + (
-        f" — 🛒 {nombre_articles_panier} article(s)"
-        if nombre_articles_panier > 0
-        else ""
+)
+if nombre_articles > 0:
+    message_bienvenue += (
+        f" — 🛒 {nombre_articles} article(s)"
     )
+st.caption(
+    message_bienvenue
 )
 # ============================================================
 # RECHERCHE
@@ -657,8 +730,7 @@ categories = sorted(
             for _, ligne in df.iterrows()
         }
     ),
-    key=lambda valeur:
-    normaliser_texte(valeur)
+    key=normaliser_texte
 )
 categorie = st.selectbox(
     "📂 Catégorie",
@@ -673,14 +745,21 @@ if recherche.strip():
         recherche
     )
     def correspond_recherche(ligne):
-        champs = [
-            nom_produit(ligne),
-            description_produit(ligne),
-            categorie_produit(ligne),
-        ]
         texte = " ".join(
-            normaliser_texte(champ)
-            for champ in champs
+            [
+                normaliser_texte(
+                    nom_produit(ligne)
+                ),
+                normaliser_texte(
+                    categorie_produit(ligne)
+                ),
+                normaliser_texte(
+                    format_produit(ligne)
+                ),
+                normaliser_texte(
+                    prix_kg_litre(ligne)
+                ),
+            ]
         )
         return texte_recherche in texte
     df_affiche = df_affiche[
@@ -699,7 +778,7 @@ if categorie != "Toutes":
         )
     ]
 # ============================================================
-# RÉSULTAT DE RECHERCHE
+# PRODUITS
 # ============================================================
 st.subheader(
     "🛍️ Produits"
@@ -707,12 +786,9 @@ st.subheader(
 st.caption(
     f"{len(df_affiche)} produit(s) affiché(s)"
 )
-# ============================================================
-# PRODUITS
-# ============================================================
 if df_affiche.empty:
     st.info(
-        "🔎 Aucun produit ne correspond "
+        "Aucun produit ne correspond "
         "à votre recherche."
     )
 else:
@@ -720,6 +796,9 @@ else:
         df_affiche.iterrows()
     ):
         nom = nom_produit(article)
+        categorie_article = (
+            categorie_produit(article)
+        )
         description = (
             description_produit(article)
         )
@@ -731,11 +810,15 @@ else:
             obtenir_prix_promo(article)
         )
         prix = prix_final(article)
-        economie_unitaire = 0.0
-        if (
+        photo = photo_produit(
+            article
+        )
+        promo_active = (
             prix_promo is not None
             and prix_promo < prix_normal
-        ):
+        )
+        economie_unitaire = 0.0
+        if promo_active:
             economie_unitaire = (
                 prix_normal - prix_promo
             )
@@ -743,12 +826,31 @@ else:
             "<div class='produit-card'>",
             unsafe_allow_html=True
         )
-        col1, col2, col3 = st.columns(
-            [5, 2, 1]
+        # ----------------------------------------------------
+        # PHOTO
+        # ----------------------------------------------------
+        col_photo, col_infos, col_prix, col_action = (
+            st.columns([1.3, 4, 2, 1.5])
         )
-        with col1:
+        with col_photo:
+            if photo:
+                try:
+                    st.image(
+                        photo,
+                        use_container_width=True
+                    )
+                except Exception:
+                    st.write("🌸")
+            else:
+                st.markdown(
+                    "### 🌸"
+                )
+        # ----------------------------------------------------
+        # INFORMATIONS
+        # ----------------------------------------------------
+        with col_infos:
             titre = f"### {nom}"
-            if economie_unitaire > 0:
+            if promo_active:
                 titre += (
                     " "
                     "<span class='badge-promo'>"
@@ -759,6 +861,10 @@ else:
                 titre,
                 unsafe_allow_html=True
             )
+            if categorie_article:
+                st.caption(
+                    f"📂 {categorie_article}"
+                )
             if description:
                 st.write(
                     description
@@ -777,8 +883,11 @@ else:
                     "</span>",
                     unsafe_allow_html=True
                 )
-        with col2:
-            if economie_unitaire > 0:
+        # ----------------------------------------------------
+        # PRIX
+        # ----------------------------------------------------
+        with col_prix:
+            if promo_active:
                 st.markdown(
                     f"<span class='ancien-prix'>"
                     f"{prix_normal:.2f} €"
@@ -792,16 +901,20 @@ else:
                     unsafe_allow_html=True
                 )
                 st.caption(
-                    f"💚 -{economie_unitaire:.2f} €"
+                    f"💚 Économie "
+                    f"{economie_unitaire:.2f} €"
                 )
             else:
                 st.markdown(
-                    f"<span class='prix'>"
+                    f"<span class='prix-normal'>"
                     f"{prix:.2f} €"
                     f"</span>",
                     unsafe_allow_html=True
                 )
-        with col3:
+        # ----------------------------------------------------
+        # BOUTON
+        # ----------------------------------------------------
+        with col_action:
             if stock > 0:
                 if st.button(
                     "➕ Ajouter",
@@ -844,7 +957,7 @@ else:
     )
     st.markdown(
         f"""
-        <div class='resume-panier'>
+        <div class="panier-resume">
         🛒 <strong>{nombre_articles}</strong> article(s)
         &nbsp;&nbsp;•&nbsp;&nbsp;
         💰 <strong>{total:.2f} €</strong>
@@ -866,7 +979,7 @@ else:
             quantite * prix
         )
         col1, col2, col3, col4 = st.columns(
-            [4, 2, 1, 1]
+            [4, 2, 1.5, 1.5]
         )
         with col1:
             st.write(
@@ -886,20 +999,18 @@ else:
             with col_moins:
                 if st.button(
                     "➖",
-                    key=f"moins_{nom}",
-                    use_container_width=True
+                    key=f"retirer_{nom}"
                 ):
-                    diminuer_quantite(
+                    retirer_panier(
                         nom
                     )
                     st.rerun()
             with col_plus:
                 if st.button(
                     "➕",
-                    key=f"plus_{nom}",
-                    use_container_width=True
+                    key=f"ajouter_panier_{nom}"
                 ):
-                    augmenter_quantite(
+                    augmenter_panier(
                         nom,
                         df
                     )
@@ -911,15 +1022,10 @@ else:
             f"{economie:.2f} €"
         )
     st.markdown(
-        f"<div class='total-panier'>"
-        f"Total : {total:.2f} €"
-        f"</div>",
-        unsafe_allow_html=True
+        f"## Total : {total:.2f} €"
     )
-    st.write("")
     if st.button(
-        "🗑️ Vider le panier",
-        use_container_width=True
+        "🗑️ Vider le panier"
     ):
         vider_panier()
         st.rerun()
@@ -950,12 +1056,11 @@ if st.session_state.panier:
     informations = st.text_area(
         "📝 Informations complémentaires",
         placeholder=(
-            "Exemple : heure souhaitée, "
-            "instructions particulières..."
+            "Exemple : heure souhaitée..."
         )
     )
     st.info(
-        "ℹ️ Le stock sera retiré de "
+        "Le stock sera retiré de "
         "Google Sheets uniquement après "
         "validation réussie."
     )
@@ -972,13 +1077,9 @@ if st.session_state.panier:
                 "❌ Merci d'indiquer "
                 "votre adresse de livraison."
             )
-        elif not st.session_state.panier:
-            st.error(
-                "❌ Votre panier est vide."
-            )
         else:
             with st.spinner(
-                "🔄 Vérification du stock..."
+                "Vérification du stock..."
             ):
                 succes, message = (
                     retirer_stock_commande()
@@ -989,7 +1090,7 @@ if st.session_state.panier:
                     f"{message}"
                 )
                 st.warning(
-                    "⚠️ Aucun stock n'a été retiré."
+                    "Aucun stock n'a été retiré."
                 )
             else:
                 total = calculer_total()
@@ -999,13 +1100,6 @@ if st.session_state.panier:
                     adresse,
                     informations
                 )
-                st.session_state.derniere_commande = {
-                    "total": total,
-                    "mode": mode,
-                    "date": datetime.now().strftime(
-                        "%d/%m/%Y %H:%M"
-                    ),
-                }
                 vider_panier()
                 charger_produits.clear()
                 st.success(
@@ -1018,35 +1112,13 @@ if st.session_state.panier:
                 st.balloons()
                 st.rerun()
 # ============================================================
-# DERNIÈRE COMMANDE
-# ============================================================
-if st.session_state.derniere_commande:
-    commande = (
-        st.session_state.derniere_commande
-    )
-    with st.expander(
-        "✅ Dernière commande"
-    ):
-        st.write(
-            f"📅 Date : "
-            f"{commande['date']}"
-        )
-        st.write(
-            f"📦 Mode : "
-            f"{commande['mode']}"
-        )
-        st.write(
-            f"💰 Total : "
-            f"**{commande['total']:.2f} €**"
-        )
-# ============================================================
 # ESTIMATION CARBURANT
 # ============================================================
 with st.expander(
     "⛽ Estimation carburant"
 ):
     st.write(
-        "Estimation basée sur "
+        f"Calcul basé sur "
         f"{CONSOMMATION_L_100KM:.1f} L/100 km "
         f"et {PRIX_CARBURANT:.2f} €/L."
     )
