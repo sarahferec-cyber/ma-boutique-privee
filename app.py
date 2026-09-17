@@ -160,13 +160,6 @@ def normaliser_texte(texte):
 
 
 def trouver_colonne(objet, noms_possibles):
-    """
-    Trouve une colonne sans supposer que l'objet est un DataFrame.
-    Fonctionne avec :
-    - un DataFrame (.columns)
-    - une ligne pandas Series (.index)
-    - une liste de noms de colonnes
-    """
 
     if hasattr(objet, "columns"):
         colonnes = list(objet.columns)
@@ -177,19 +170,16 @@ def trouver_colonne(objet, noms_possibles):
     else:
         colonnes = list(objet)
 
-    colonnes_normalisees = {
-        normaliser_texte(colonne): colonne
-        for colonne in colonnes
-    }
+    for colonne in colonnes:
 
-    for nom in noms_possibles:
-        nom_normalise = normaliser_texte(nom)
+        colonne_normalisee = normaliser_texte(colonne)
 
-        if nom_normalise in colonnes_normalisees:
-            return colonnes_normalisees[nom_normalise]
+        for nom in noms_possibles:
+
+            if colonne_normalisee == normaliser_texte(nom):
+                return colonne
 
     return None
-
 
 # ============================================================
 # CHARGEMENT DU GOOGLE SHEET
