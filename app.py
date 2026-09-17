@@ -10,14 +10,14 @@ from datetime import datetime
 # ============================================================
 
 # URL de ton Google Sheet
-GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/TON_ID_GOOGLE_SHEET/edit"
+GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing"
 
 # URL /exec de ton Apps Script
-STOCK_API_URL = "https://script.google.com/macros/s/TON_ID_SCRIPT/exec"
+STOCK_API_URL = "https://script.google.com/macros/s/AKfycbxTep4v3fevHxUE0Cv6f6SE1IRie_xCNctecO_7Ez_XXhNUQJlhc46l6mkDe-FQk7s5lA/exec"
 
 # Webhook Discord.
 # Laisse "" si tu ne veux pas de notification Discord.
-DISCORD_WEBHOOK = "TON_NOUVEAU_WEBHOOK_DISCORD"
+DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M5OsuT3FlNqt_"
 
 
 # ============================================================
@@ -25,15 +25,15 @@ DISCORD_WEBHOOK = "TON_NOUVEAU_WEBHOOK_DISCORD"
 # ============================================================
 
 COMPTES_AUTORISES = {
-    "sarah": "TON_MOT_DE_PASSE",
-    "maman": "TON_MOT_DE_PASSE",
-    "carole": "TON_MOT_DE_PASSE",
-    "ben": "TON_MOT_DE_PASSE",
-    "helene": "TON_MOT_DE_PASSE",
-    "laurie": "TON_MOT_DE_PASSE",
-    "tiffany": "TON_MOT_DE_PASSE",
-    "lesfilles": "TON_MOT_DE_PASSE",
-    "invite": "TON_MOT_DE_PASSE",
+    "sarah": "shopping2026",
+    "maman": "parfaite",
+    "carole": "unique",
+    "ben": "groot",
+    "helene": "mae",
+    "laurie": "mojito",
+    "tiffany": "babysitter",
+    "lesfilles": "economies",
+    "invite": "bonplan11",
 }
 
 
