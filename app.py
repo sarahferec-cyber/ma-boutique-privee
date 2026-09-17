@@ -26,7 +26,7 @@ STOCK_API_URL = (
     "/exec"
 )
 # Mets ici ton NOUVEAU webhook Discord
-DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M5OsuT3FlNqt_"
+DISCORD_WEBHOOK = "COLLE_TON_NOUVEAU_WEBHOOK_ICI"
 COMPTES_AUTORISES = {
     "sarah": "shopping2026",
     "maman": "parfaite",
@@ -60,6 +60,24 @@ st.markdown(
     }
     div[data-testid="stVerticalBlockBorderWrapper"] {
         border-radius: 12px;
+    }
+    .prix-initial {
+        color: #888;
+        text-decoration: line-through;
+        font-size: 0.95rem;
+    }
+    .prix-promo {
+        font-size: 1.25rem;
+        font-weight: 700;
+    }
+    .economie {
+        font-weight: 700;
+        margin-top: 4px;
+    }
+    .economie-panier {
+        padding: 10px;
+        border-radius: 10px;
+        margin: 10px 0;
     }
     </style>
     """,
@@ -226,6 +244,9 @@ def charger_produits():
         ).fillna(0).astype(int)
     else:
         nouveau_df["stock"] = 0
+    # ========================================================
+    # PRIX INITIAL
+    # ========================================================
     if col_prix_initial:
         nouveau_df["prix_initial"] = pd.to_numeric(
             df[col_prix_initial]
@@ -237,6 +258,9 @@ def charger_produits():
         )
     else:
         nouveau_df["prix_initial"] = None
+    # ========================================================
+    # PRIX PROMO
+    # ========================================================
     if col_prix_promo:
         nouveau_df["prix_promo"] = pd.to_numeric(
             df[col_prix_promo]
@@ -256,6 +280,49 @@ def charger_produits():
         nouveau_df["prix_initial"]
     )
     # ========================================================
+    # CALCUL DES ÉCONOMIES
+    # ========================================================
+    nouveau_df["economie"] = (
+        nouveau_df["prix_initial"]
+        - nouveau_df["prix"]
+    )
+    # Si l'économie est négative, on la force à 0
+    nouveau_df["economie"] = (
+        nouveau_df["economie"]
+        .clip(lower=0)
+        .fillna(0)
+    )
+    nouveau_df["pourcentage_economie"] = 0.0
+    masque_prix_valide = (
+        nouveau_df["prix_initial"].notna()
+        & (nouveau_df["prix_initial"] > 0)
+        & (nouveau_df["prix"] < nouveau_df["prix_initial"])
+    )
+    nouveau_df.loc[
+        masque_prix_valide,
+        "pourcentage_economie"
+    ] = (
+        (
+            (
+                nouveau_df.loc[
+                    masque_prix_valide,
+                    "prix_initial"
+                ]
+                -
+                nouveau_df.loc[
+                    masque_prix_valide,
+                    "prix"
+                ]
+            )
+            /
+            nouveau_df.loc[
+                masque_prix_valide,
+                "prix_initial"
+            ]
+        )
+        * 100
+    )
+    # ========================================================
     # NETTOYAGE
     # ========================================================
     nouveau_df = nouveau_df[
@@ -263,6 +330,18 @@ def charger_produits():
     ].copy()
     nouveau_df["prix"] = pd.to_numeric(
         nouveau_df["prix"],
+        errors="coerce"
+    ).fillna(0)
+    nouveau_df["prix_initial"] = pd.to_numeric(
+        nouveau_df["prix_initial"],
+        errors="coerce"
+    )
+    nouveau_df["economie"] = pd.to_numeric(
+        nouveau_df["economie"],
+        errors="coerce"
+    ).fillna(0)
+    nouveau_df["pourcentage_economie"] = pd.to_numeric(
+        nouveau_df["pourcentage_economie"],
         errors="coerce"
     ).fillna(0)
     return nouveau_df.reset_index(drop=True)
@@ -327,6 +406,14 @@ def calculer_sous_total():
         total += (
             article["quantite"]
             * article["prix"]
+        )
+    return total
+def calculer_economie_totale():
+    total = 0
+    for article in st.session_state.panier.values():
+        total += (
+            article["quantite"]
+            * article.get("economie", 0)
         )
     return total
 # ============================================================
@@ -501,10 +588,6 @@ st.markdown(
 # ============================================================
 # LAYOUT PRINCIPAL
 # ============================================================
-#
-# PANIER À GAUCHE
-# PRODUITS À DROITE
-#
 col_panier, col_produits = st.columns(
     [1, 2.2],
     gap="large"
@@ -538,14 +621,51 @@ with col_panier:
             ):
                 quantite = article["quantite"]
                 prix = article["prix"]
+                prix_initial = article.get(
+                    "prix_initial",
+                    prix
+                )
+                economie_unitaire = article.get(
+                    "economie",
+                    0
+                )
                 total_article = (
                     quantite * prix
+                )
+                economie_article = (
+                    quantite * economie_unitaire
                 )
                 st.markdown(
                     f"**{nom}**"
                 )
+                # Prix initial / prix promo
+                if (
+                    prix_initial
+                    and prix_initial > prix
+                ):
+                    st.markdown(
+                        f"""
+                        <span class="prix-initial">
+                            {prix_initial:.2f} € / unité
+                        </span>
+                        &nbsp;
+                        <span class="prix-promo">
+                            {prix:.2f} €
+                        </span>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    st.caption(
+                        f"💸 Économie : "
+                        f"{economie_article:.2f} €"
+                    )
+                else:
+                    st.write(
+                        f"{prix:.2f} € / unité"
+                    )
                 st.write(
-                    f"{quantite} × {prix:.2f} € "
+                    f"{quantite} × "
+                    f"{prix:.2f} € "
                     f"= **{total_article:.2f} €**"
                 )
                 if st.button(
@@ -564,10 +684,26 @@ with col_panier:
             # SOUS-TOTAL
             # ====================================================
             sous_total = calculer_sous_total()
+            economie_totale = calculer_economie_totale()
             st.metric(
                 "💰 Sous-total",
                 f"{sous_total:.2f} €"
             )
+            # ====================================================
+            # ÉCONOMIE TOTALE
+            # ====================================================
+            if economie_totale > 0:
+                st.markdown(
+                    f"""
+                    <div class="economie-panier">
+                        💸 <strong>Économie réalisée</strong><br>
+                        <span style="font-size: 1.25rem;">
+                            {economie_totale:.2f} €
+                        </span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
             # ====================================================
             # MODE DE REMISE
             # ====================================================
@@ -724,13 +860,28 @@ with col_panier:
                         ):
                             qte = article["quantite"]
                             prix = article["prix"]
+                            economie = article.get(
+                                "economie",
+                                0
+                            )
                             total_article = (
                                 qte * prix
                             )
-                            lignes_produits.append(
+                            economie_article = (
+                                qte * economie
+                            )
+                            ligne = (
                                 f"• {qte} × {nom} — "
                                 f"{prix:.2f} € / unité = "
                                 f"{total_article:.2f} €"
+                            )
+                            if economie_article > 0:
+                                ligne += (
+                                    f" | Économie : "
+                                    f"{economie_article:.2f} €"
+                                )
+                            lignes_produits.append(
+                                ligne
                             )
                         produits_message = "\n".join(
                             lignes_produits
@@ -767,6 +918,8 @@ with col_panier:
                             f"{produits_message}\n\n"
                             f"💰 Sous-total : "
                             f"{sous_total:.2f} €\n"
+                            f"💸 Économie réalisée : "
+                            f"{economie_totale:.2f} €\n"
                             f"{livraison_message}\n\n"
                             f"💳 **TOTAL : "
                             f"{total_commande:.2f} €**"
@@ -832,6 +985,17 @@ with col_produits:
             format_produit = str(produit["format"])
             stock = int(produit["stock"])
             prix = float(produit["prix"])
+            prix_initial = produit["prix_initial"]
+            if pd.isna(prix_initial):
+                prix_initial = None
+            else:
+                prix_initial = float(prix_initial)
+            economie = float(
+                produit["economie"]
+            )
+            pourcentage_economie = float(
+                produit["pourcentage_economie"]
+            )
             with st.container(border=True):
                 col_photo, col_infos = st.columns(
                     [1, 2]
@@ -865,14 +1029,55 @@ with col_produits:
                         st.write(
                             f"📦 Format : {format_produit}"
                         )
-                    st.write(
-                        f"💰 **{prix:.2f} €**"
-                    )
+                    # ============================================
+                    # PRIX
+                    # ============================================
+                    if (
+                        prix_initial is not None
+                        and prix_initial > prix
+                    ):
+                        st.markdown(
+                            f"""
+                            <span class="prix-initial">
+                                {prix_initial:.2f} €
+                            </span>
+                            &nbsp;&nbsp;
+                            <span class="prix-promo">
+                                {prix:.2f} €
+                            </span>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                        st.markdown(
+                            f"""
+                            <div class="economie">
+                                🏷️ -{pourcentage_economie:.0f} %
+                                &nbsp; | &nbsp;
+                                💸 Économie :
+                                {economie:.2f} €
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        st.markdown(
+                            f"""
+                            <span class="prix-promo">
+                                {prix:.2f} €
+                            </span>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    # ============================================
+                    # STOCK
+                    # ============================================
                     if stock > 0:
                         st.success(
                             f"Disponible : {stock}"
                         )
-                        # Formulaire indépendant par produit
+                        # ========================================
+                        # FORMULAIRE AJOUT PANIER
+                        # ========================================
                         with st.form(
                             key=f"form_ajout_{index}"
                         ):
@@ -912,13 +1117,29 @@ with col_produits:
                                         st.session_state.panier[
                                             nom
                                         ]["prix"] = prix
+                                        st.session_state.panier[
+                                            nom
+                                        ]["prix_initial"] = (
+                                            prix_initial
+                                            if prix_initial is not None
+                                            else prix
+                                        )
+                                        st.session_state.panier[
+                                            nom
+                                        ]["economie"] = economie
                                         st.rerun()
                                 else:
                                     st.session_state.panier[
                                         nom
                                     ] = {
                                         "quantite": int(quantite),
-                                        "prix": prix
+                                        "prix": prix,
+                                        "prix_initial": (
+                                            prix_initial
+                                            if prix_initial is not None
+                                            else prix
+                                        ),
+                                        "economie": economie
                                     }
                                     st.rerun()
                     else:
