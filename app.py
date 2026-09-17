@@ -550,35 +550,38 @@ def retirer_stock_commande():
 # DISCORD
 # ============================================================
 
-def envoyer_discord(total, mode, informations):
-    if not DISCORD_WEBHOOK:
+def envoyer_discord(
+    total,
+    mode,
+    adresse,
+    informations
+):
+
+    if (
+        not DISCORD_WEBHOOK
+        or DISCORD_WEBHOOK.startswith("TON_")
+    ):
         return
 
-   contenu = (
+    contenu = (
         "🌸 **Nouvelle commande**\n\n"
-        f"👤 Client : "
-        f"{st.session_state.utilisateur}\n"
+        f"👤 Client : {st.session_state.utilisateur}\n"
         f"💰 Total : {total:.2f} €\n"
         f"📦 Mode : {mode}\n"
         f"📍 Adresse : {adresse}\n"
-        f"📝 Informations : "
-        f"{informations}\n\n"
+        f"📝 Informations : {informations}\n\n"
         "🛒 **Produits :**\n"
     )
 
-    for (
-        nom,
-        article
-    ) in st.session_state.panier.items():
+    for nom, article in st.session_state.panier.items():
 
         sous_total = (
-            article["prix"]
-            * article["quantite"]
+            float(article["prix"])
+            * int(article["quantite"])
         )
 
         contenu += (
-            f"- {nom} × "
-            f"{article['quantite']} "
+            f"- {nom} × {article['quantite']} "
             f"= {sous_total:.2f} €\n"
         )
 
@@ -589,7 +592,7 @@ def envoyer_discord(total, mode, informations):
             json={
                 "content": contenu
             },
-            timeout=10,
+            timeout=10
         )
 
     except requests.RequestException:
