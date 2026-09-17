@@ -3,7 +3,6 @@ import pandas as pd
 import requests
 import io
 import time
-import html
 # ============================================================
 # 1. CONFIGURATION
 # ============================================================
@@ -13,20 +12,16 @@ st.set_page_config(
     layout="wide"
 )
 # ============================================================
-# 2. STYLE
+# 2. STYLE GÉNÉRAL
+# ============================================================
+#
+# IMPORTANT :
+# Il n'y a volontairement AUCUN HTML pour les cartes produits.
 # ============================================================
 st.markdown("""
 <style>
 .stApp {
     background-color: #FFF5F5;
-}
-.product-card {
-    padding: 20px;
-    border-radius: 15px;
-    border: 2px solid #FFD1D1;
-    background-color: white;
-    margin-bottom: 20px;
-    text-align: center;
 }
 [data-testid="stSidebar"] {
     background-color: #FFEAEF;
@@ -34,7 +29,6 @@ st.markdown("""
 }
 h1, h2, h3 {
     color: #C71585 !important;
-    font-family: 'Poppins', sans-serif;
 }
 .stButton > button {
     background-color: #FF69B4 !important;
@@ -42,9 +36,6 @@ h1, h2, h3 {
     border-radius: 20px !important;
     font-weight: bold !important;
     width: 100%;
-}
-.stNumberInput input {
-    border-radius: 10px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -80,8 +71,8 @@ URL_MACRO_STOCK = (
 # ============================================================
 def convertir_float(valeur, valeur_defaut=0.0):
     """
-    Transforme proprement une valeur en nombre.
-    Exemples acceptés :
+    Transforme une valeur en nombre.
+    Accepte par exemple :
     12
     12.50
     12,50
@@ -103,11 +94,14 @@ def convertir_float(valeur, valeur_defaut=0.0):
         texte = texte.replace(" ", "")
         texte = texte.replace(",", ".")
         return float(texte)
-    except (ValueError, TypeError):
+    except (
+        ValueError,
+        TypeError
+    ):
         return valeur_defaut
 def convertir_int(valeur, valeur_defaut=0):
     """
-    Transforme proprement une valeur en entier.
+    Transforme une valeur en entier.
     """
     try:
         return int(
@@ -116,12 +110,15 @@ def convertir_int(valeur, valeur_defaut=0):
                 valeur_defaut
             )
         )
-    except (ValueError, TypeError):
+    except (
+        ValueError,
+        TypeError
+    ):
         return valeur_defaut
 def envoyer_discord(message):
     """
-    Envoie une notification Discord si
-    DISCORD_WEBHOOK est configuré dans st.secrets.
+    Envoie une notification Discord si le webhook
+    est présent dans les secrets Streamlit.
     """
     try:
         webhook = st.secrets.get(
@@ -143,128 +140,110 @@ def envoyer_discord(message):
         ]
     except Exception:
         return False
+@st.cache_data(ttl=60)
 def load_clean_data():
     """
-    Charge le Google Sheets au format CSV
-    et nettoie les colonnes.
+    Charge Google Sheets en CSV.
+    Le cache dure 60 secondes afin d'éviter
+    de télécharger le fichier à chaque interaction.
     """
-    try:
-        csv_url = (
-            URL_SHEETS
-            .replace(
-                "/edit?usp=sharing",
-                "/export?format=csv"
-            )
-            .replace(
-                "/edit",
-                "/export?format=csv"
-            )
+    csv_url = (
+        URL_SHEETS
+        .replace(
+            "/edit?usp=sharing",
+            "/export?format=csv"
         )
-        response = requests.get(
-            csv_url,
-            timeout=15
+        .replace(
+            "/edit",
+            "/export?format=csv"
         )
-        response.raise_for_status()
-        response.encoding = "utf-8"
-        data = pd.read_csv(
-            io.StringIO(
-                response.text
-            ),
-            encoding="utf-8",
-            engine="python",
-            on_bad_lines="skip"
+    )
+    response = requests.get(
+        csv_url,
+        timeout=15
+    )
+    response.raise_for_status()
+    response.encoding = "utf-8"
+    data = pd.read_csv(
+        io.StringIO(
+            response.text
+        ),
+        encoding="utf-8",
+        engine="python",
+        on_bad_lines="skip"
+    )
+    # --------------------------------------------------------
+    # Nettoyage des noms de colonnes
+    # --------------------------------------------------------
+    data.columns = [
+        str(colonne).strip().lower()
+        for colonne in data.columns
+    ]
+    remplacements = {
+        "é": "e",
+        "è": "e",
+        "ê": "e",
+        "ë": "e",
+        "à": "a",
+        "â": "a",
+        "ä": "a",
+        "ù": "u",
+        "û": "u",
+        "ü": "u",
+        "ô": "o",
+        "ö": "o",
+        "î": "i",
+        "ï": "i",
+        "ç": "c"
+    }
+    for ancien, nouveau in remplacements.items():
+        data.columns = data.columns.str.replace(
+            ancien,
+            nouveau,
+            regex=False
         )
-        # ----------------------------------------------------
-        # Nettoyage des noms de colonnes
-        # ----------------------------------------------------
-        data.columns = [
-            str(c).strip().lower()
-            for c in data.columns
-        ]
-        # Normalisation des accents
-        remplacements_accents = {
-            "é": "e",
-            "è": "e",
-            "ê": "e",
-            "ë": "e",
-            "à": "a",
-            "â": "a",
-            "ä": "a",
-            "ù": "u",
-            "û": "u",
-            "ü": "u",
-            "ô": "o",
-            "ö": "o",
-            "î": "i",
-            "ï": "i",
-            "ç": "c"
-        }
-        for ancien, nouveau in remplacements_accents.items():
-            data.columns = data.columns.str.replace(
-                ancien,
-                nouveau,
-                regex=False
-            )
-        data.columns = (
-            data.columns
+    data.columns = (
+        data.columns
+        .str.replace(
+            "\n",
+            " ",
+            regex=False
+        )
+        .str.replace(
+            "  ",
+            " ",
+            regex=False
+        )
+        .str.strip()
+    )
+    # --------------------------------------------------------
+    # Nettoyage du contenu
+    # --------------------------------------------------------
+    for colonne in data.select_dtypes(
+        include=["object"]
+    ).columns:
+        data[colonne] = (
+            data[colonne]
+            .astype(str)
             .str.replace(
-                "\n",
-                " ",
-                regex=False
-            )
-            .str.replace(
-                "  ",
-                " ",
+                '"',
+                '',
                 regex=False
             )
             .str.strip()
         )
-        # ----------------------------------------------------
-        # Nettoyage du contenu
-        # ----------------------------------------------------
-        for col in data.select_dtypes(
-            include=["object"]
-        ).columns:
-            data[col] = (
-                data[col]
-                .astype(str)
-                .str.replace(
-                    '"',
-                    '',
-                    regex=False
-                )
-                .str.strip()
-            )
-        return data
-    except Exception as erreur:
-        st.error(
-            "❌ Impossible de charger les données "
-            "Google Sheets."
-        )
-        st.caption(
-            f"Détail technique : {erreur}"
-        )
-        return pd.DataFrame()
+    return data
 def trouver_colonne(
     dataframe,
     noms_possibles
 ):
     """
-    Retourne la première colonne trouvée
-    parmi les noms possibles.
+    Recherche une colonne parmi plusieurs noms possibles.
     """
     for nom in noms_possibles:
         if nom in dataframe.columns:
             return nom
     return None
-def echapper_html(valeur):
-    """
-    Sécurise les textes lorsqu'ils sont
-    insérés dans du HTML.
-    """
-    return html.escape(
-        str(valeur)
-    )
 # ============================================================
 # 6. SESSION STATE
 # ============================================================
@@ -277,11 +256,13 @@ if "achat_reussi" not in st.session_state:
 if "panier" not in st.session_state:
     st.session_state.panier = {}
 # ============================================================
-# 7. CONNEXION
+# 7. PAGE DE CONNEXION
 # ============================================================
 if not st.session_state.connecte:
     st.title(
-        "🎀 Espace Privé : "
+        "🎀 Espace Privé"
+    )
+    st.subheader(
         "La Boutique des Bons Plans 🌸"
     )
     st.write(
@@ -291,16 +272,21 @@ if not st.session_state.connecte:
         "formulaire_connexion"
     ):
         identifiant = st.text_input(
-            "👤 Votre Identifiant :"
-        ).strip().lower()
+            "👤 Votre Identifiant"
+        )
         mot_de_passe = st.text_input(
-            "🔑 Votre Mot de passe :",
+            "🔑 Votre Mot de passe",
             type="password"
         )
         connexion = st.form_submit_button(
             "✨ Entrer dans la boutique"
         )
         if connexion:
+            identifiant = (
+                identifiant
+                .strip()
+                .lower()
+            )
             if (
                 identifiant in COMPTES_AUTORISES
                 and COMPTES_AUTORISES[
@@ -314,8 +300,7 @@ if not st.session_state.connecte:
                 st.rerun()
             else:
                 st.error(
-                    "Identifiant ou mot de passe "
-                    "incorrect. ❌"
+                    "❌ Identifiant ou mot de passe incorrect."
                 )
     st.stop()
 # ============================================================
@@ -342,9 +327,19 @@ if st.sidebar.button(
     st.session_state.achat_reussi = False
     st.rerun()
 # ============================================================
-# 10. CHARGEMENT GOOGLE SHEETS
+# 10. CHARGEMENT DES DONNÉES
 # ============================================================
-df = load_clean_data()
+try:
+    df = load_clean_data()
+except Exception as erreur:
+    st.error(
+        "❌ Impossible de charger "
+        "les données Google Sheets."
+    )
+    st.caption(
+        f"Détail technique : {erreur}"
+    )
+    st.stop()
 if df.empty:
     st.warning(
         "⚠️ Aucune donnée produit disponible."
@@ -423,37 +418,32 @@ col_ppromo = trouver_colonne(
 # ============================================================
 # 12. VÉRIFICATION DES COLONNES
 # ============================================================
-colonnes_manquantes = []
-if col_nom is None:
-    colonnes_manquantes.append(
-        "Denomination / Produit"
-    )
-if col_stock is None:
-    colonnes_manquantes.append(
-        "Quantité / Stock"
-    )
-if col_pinit is None:
-    colonnes_manquantes.append(
-        "Prix initial"
-    )
-if col_ppromo is None:
-    colonnes_manquantes.append(
-        "Prix promo"
-    )
+colonnes_obligatoires = {
+    "Produit": col_nom,
+    "Stock": col_stock,
+    "Prix initial": col_pinit,
+    "Prix promo": col_ppromo
+}
+colonnes_manquantes = [
+    nom
+    for nom, colonne
+    in colonnes_obligatoires.items()
+    if colonne is None
+]
 if colonnes_manquantes:
     st.error(
-        "❌ Certaines colonnes obligatoires "
-        "sont absentes du Google Sheets."
+        "❌ Des colonnes obligatoires "
+        "sont introuvables."
     )
     st.write(
         "Colonnes manquantes :"
     )
     for colonne in colonnes_manquantes:
         st.write(
-            f"- **{colonne}**"
+            f"- {colonne}"
         )
     st.write(
-        "Colonnes actuellement détectées :"
+        "Colonnes détectées :"
     )
     st.code(
         ", ".join(
@@ -462,12 +452,12 @@ if colonnes_manquantes:
     )
     st.stop()
 # ============================================================
-# 13. FILTRES
+# 13. FILTRE PAR CATÉGORIE
 # ============================================================
 st.sidebar.header(
     "🎯 Filtres de recherche"
 )
-if col_cat is not None:
+if col_cat:
     categories = (
         df[col_cat]
         .dropna()
@@ -477,12 +467,14 @@ if col_cat is not None:
     categories = sorted(
         [
             categorie
-            for categorie in categories.unique()
+            for categorie
+            in categories.unique()
             if categorie
         ]
     )
     categories_disponibles = (
-        ["Toutes"] + categories
+        ["Toutes"]
+        + categories
     )
 else:
     categories_disponibles = [
@@ -493,7 +485,7 @@ categorie_choisie = st.sidebar.selectbox(
     categories_disponibles
 )
 # ============================================================
-# 14. FILTRAGE
+# 14. APPLICATION DU FILTRE
 # ============================================================
 if (
     categorie_choisie == "Toutes"
@@ -516,8 +508,7 @@ st.sidebar.header(
 )
 if not st.session_state.panier:
     st.sidebar.info(
-        "Votre panier est vide "
-        "pour le moment. ✨"
+        "Votre panier est vide pour le moment. ✨"
     )
 else:
     total_panier = 0.0
@@ -544,13 +535,13 @@ else:
             quantite * prix
         )
         total_panier += sous_total
-        st.sidebar.markdown(
+        st.sidebar.write(
             f"**{nom_art}**"
         )
         st.sidebar.caption(
-            f"Qté : {quantite} × "
+            f"{quantite} × "
             f"{prix:.2f} € = "
-            f"**{sous_total:.2f} €**"
+            f"{sous_total:.2f} €"
         )
         if st.sidebar.button(
             "🗑️ Retirer",
@@ -560,7 +551,7 @@ else:
                 nom_art
             )
     # --------------------------------------------------------
-    # Suppression
+    # Suppression des articles
     # --------------------------------------------------------
     if articles_a_supprimer:
         for article in articles_a_supprimer:
@@ -577,18 +568,17 @@ else:
         f"Total : {total_panier:.2f} €"
     )
     # --------------------------------------------------------
-    # Validation
+    # Validation commande
     # --------------------------------------------------------
     if st.sidebar.button(
         "✅ Valider ma commande",
         key="bouton_validation_panier"
     ):
         with st.spinner(
-            "Prise en compte de votre "
-            "commande en cours..."
+            "Prise en compte de votre commande..."
         ):
             succes_total = True
-            details_commande_discord = []
+            details_commande = []
             panier_a_traiter = dict(
                 st.session_state.panier
             )
@@ -619,18 +609,18 @@ else:
                         st.session_state.utilisateur
                 }
                 try:
-                    res = requests.post(
+                    response = requests.post(
                         URL_MACRO_STOCK,
                         json=payload,
                         timeout=10
                     )
-                    if res.status_code != 200:
+                    if response.status_code != 200:
                         succes_total = False
                         break
-                    details_commande_discord.append(
+                    details_commande.append(
                         f"- {quantite}x "
                         f"{nom_art} "
-                        f"({prix:.2f}€/u)"
+                        f"({prix:.2f} €/u)"
                     )
                 except Exception:
                     succes_total = False
@@ -639,29 +629,30 @@ else:
             # Commande réussie
             # ------------------------------------------------
             if succes_total:
-                msg_discord = (
+                message_discord = (
                     f"🎉 **Nouvelle commande de "
                     f"{st.session_state.utilisateur.capitalize()} !**\n\n"
                     + "\n".join(
-                        details_commande_discord
+                        details_commande
                     )
                     + f"\n\n💰 **Total : "
                     f"{total_panier:.2f} €**"
                 )
                 envoyer_discord(
-                    msg_discord
+                    message_discord
                 )
                 st.session_state.panier = {}
                 st.session_state.achat_reussi = True
+                # On force le rechargement du Google Sheets
+                load_clean_data.clear()
                 st.rerun()
             else:
                 st.error(
                     "❌ Une erreur est survenue "
-                    "lors de la mise à jour des stocks. "
-                    "Votre panier n'a pas été vidé."
+                    "lors de la mise à jour des stocks."
                 )
 # ============================================================
-# 16. MESSAGE COMMANDE RÉUSSIE
+# 16. CONFIRMATION
 # ============================================================
 if st.session_state.achat_reussi:
     st.success(
@@ -677,7 +668,7 @@ st.subheader(
     "🛍️ Nos produits disponibles"
 )
 st.caption(
-    f"{len(df_filtre)} produit(s) trouvé(s)"
+    f"{len(df_filtre)} produit(s) dans cette sélection"
 )
 # ============================================================
 # 18. AFFICHAGE DES PRODUITS
@@ -686,7 +677,7 @@ colonnes_produits = st.columns(3)
 produits_affiches = 0
 for index, row in df_filtre.iterrows():
     # --------------------------------------------------------
-    # Nom
+    # NOM
     # --------------------------------------------------------
     nom_produit = str(
         row[col_nom]
@@ -701,7 +692,7 @@ for index, row in df_filtre.iterrows():
     ):
         continue
     # --------------------------------------------------------
-    # Stock
+    # STOCK
     # --------------------------------------------------------
     stock_actuel = convertir_int(
         row[col_stock]
@@ -709,7 +700,7 @@ for index, row in df_filtre.iterrows():
     if stock_actuel <= 0:
         continue
     # --------------------------------------------------------
-    # Prix
+    # PRIX
     # --------------------------------------------------------
     px_base = convertir_float(
         row[col_pinit]
@@ -720,7 +711,7 @@ for index, row in df_filtre.iterrows():
     if px_promo <= 0:
         px_promo = px_base
     # --------------------------------------------------------
-    # Promotion
+    # PROMOTION
     # --------------------------------------------------------
     if (
         px_base > 0
@@ -737,14 +728,7 @@ for index, row in df_filtre.iterrows():
     else:
         pourcentage_remise = 0
     # --------------------------------------------------------
-    # Colonne
-    # --------------------------------------------------------
-    col_courante = colonnes_produits[
-        produits_affiches % 3
-    ]
-    produits_affiches += 1
-    # --------------------------------------------------------
-    # Format
+    # FORMAT
     # --------------------------------------------------------
     format_produit = "N/A"
     if (
@@ -759,7 +743,7 @@ for index, row in df_filtre.iterrows():
         if format_produit.lower() == "nan":
             format_produit = "N/A"
     # --------------------------------------------------------
-    # Photo
+    # PHOTO
     # --------------------------------------------------------
     photo_url = ""
     if (
@@ -773,17 +757,22 @@ for index, row in df_filtre.iterrows():
         ).strip()
         if photo_url.lower() == "nan":
             photo_url = ""
+    # --------------------------------------------------------
+    # COLONNE
+    # --------------------------------------------------------
+    col_courante = colonnes_produits[
+        produits_affiches % 3
+    ]
+    produits_affiches += 1
     # ========================================================
-    # CARTE PRODUIT
+    # PRODUIT
     # ========================================================
     with col_courante:
         # ----------------------------------------------------
         # PHOTO
         # ----------------------------------------------------
         #
-        # IMPORTANT :
-        # La photo est maintenant complètement séparée
-        # du HTML de la carte.
+        # Aucun HTML.
         # ----------------------------------------------------
         if photo_url:
             try:
@@ -795,11 +784,15 @@ for index, row in df_filtre.iterrows():
                 st.warning(
                     "⚠️ Photo indisponible"
                 )
+        else:
+            st.info(
+                "📷 Pas de photo disponible"
+            )
         # ----------------------------------------------------
         # NOM
         # ----------------------------------------------------
-        st.markdown(
-            f"### {nom_produit}"
+        st.subheader(
+            nom_produit
         )
         # ----------------------------------------------------
         # FORMAT
@@ -817,28 +810,15 @@ for index, row in df_filtre.iterrows():
             )
         else:
             st.markdown(
-                f"**{px_promo:.2f} €**"
+                f"### {px_promo:.2f} €"
             )
         # ----------------------------------------------------
         # PROMOTION
         # ----------------------------------------------------
         if pourcentage_remise > 0:
-            st.markdown(
-                f"""
-                <div style="
-                    background-color:#FF69B4;
-                    color:white;
-                    padding:5px 10px;
-                    border-radius:10px;
-                    font-weight:bold;
-                    text-align:center;
-                    margin:10px 0;
-                ">
-                    🔥 ÉCONOMIE :
-                    -{pourcentage_remise}%
-                </div>
-                """,
-                unsafe_allow_html=True
+            st.success(
+                f"🔥 Économie : "
+                f"-{pourcentage_remise}%"
             )
         else:
             st.caption(
@@ -847,20 +827,15 @@ for index, row in df_filtre.iterrows():
         # ----------------------------------------------------
         # STOCK
         # ----------------------------------------------------
-        #
-        # IMPORTANT :
-        # Cette information n'est PAS dans le HTML.
-        # Elle ne peut donc plus apparaître sur la photo.
-        # ----------------------------------------------------
-        st.markdown(
-            f"📦 **Disponibles : "
-            f"{stock_actuel} restant(s)**"
+        st.info(
+            f"📦 Disponibles : "
+            f"{stock_actuel} restant(s)"
         )
         # ----------------------------------------------------
         # QUANTITÉ
         # ----------------------------------------------------
         quantite_selectionnee = st.number_input(
-            f"Quantité pour {nom_produit}",
+            "Quantité",
             min_value=1,
             max_value=stock_actuel,
             value=1,
@@ -881,7 +856,7 @@ for index, row in df_filtre.iterrows():
                 )
             )
         # ----------------------------------------------------
-        # AJOUT AU PANIER
+        # BOUTON
         # ----------------------------------------------------
         if st.button(
             "🛒 Ajouter au panier",
@@ -891,14 +866,11 @@ for index, row in df_filtre.iterrows():
                 quantite_deja_panier
                 + quantite_selectionnee
             )
-            # -----------------------------------------------
-            # Vérification du stock
-            # -----------------------------------------------
             if nouvelle_quantite > stock_actuel:
                 st.error(
-                    "❌ Impossible d'ajouter cette "
-                    "quantité : le stock disponible "
-                    f"est de {stock_actuel}."
+                    "❌ Stock insuffisant. "
+                    f"Il reste seulement "
+                    f"{stock_actuel} exemplaire(s)."
                 )
             else:
                 st.session_state.panier[
