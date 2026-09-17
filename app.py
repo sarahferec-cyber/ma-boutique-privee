@@ -251,36 +251,42 @@ if not col_nom or not col_stock:
 # ============================================================
 # 11. RECHERCHE ET RECOMPOSITION DES COLONNES IMPORTÉES
 # ============================================================
-NameError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
-Traceback:
-File "/mount/src/ma-boutique-privee/app.py", line 239, in <module>
-    col_cat = trouver_colonn
-              ^^^^^^^^^^^^^^
+col_photo = 'photo produit' if 'photo produit' in df.columns else 'photo'
+col_nom = 'denomination' if 'denomination' in df.columns else 'denom'
+col_cat = 'categorie' if 'categorie' in df.columns else 'cat'
+col_fmt = 'litre / gramme' if 'litre / gramme' in df.columns else 'format'
+col_stock = 'quantite' if 'quantite' in df.columns else 'stock'
+col_pinit = 'prix initial' if 'prix initial' in df.columns else 'initial'
+col_ppromo = 'prix promo' if 'prix promo' in df.columns else 'promo'
 
-if not col_nom or not col_stock:
-    st.error("❌ Les colonnes essentielles ('Produit' et 'Quantité') n'ont pas pu être détectées.")
+# Vérification de sécurité des colonnes obligatoires
+if col_nom not in df.columns or col_stock not in df.columns:
+    st.error("❌ Les colonnes essentielles ('Denomination' et 'Quantité') n'ont pas pu être détectées.")
     st.stop()
 
 # ============================================================
-# 12. BARRE LATÉRALE : FILTRES & PANIER (NETTOYÉ ✨)
+# 12. BARRE LATÉRALE : FILTRES & CONFIGURATION
 # ============================================================
 st.sidebar.header("🎯 Filtres de recherche")
 
+# Extraction propre des catégories uniques pour le menu déroulant
 if col_cat in df.columns:
-    categories_disponibles = ["Toutes"] + sorted(list(df[col_cat].dropna().unique()))
+    categories_disponibles = ["Toutes"] + sorted(list(df[col_cat].dropna().astype(str).unique()))
 else:
     categories_disponibles = ["Toutes"]
+
 categorie_choisie = st.sidebar.selectbox("Filtrer par rayon :", categories_disponibles)
 
-# Filtrage du tableau de données selon le choix de l'utilisateur
+# Application du filtre sur les données de la boutique
 if categorie_choisie == "Toutes":
     df_filtre = df
 else:
     df_filtre = df[df[col_cat] == categorie_choisie]
 
+# Séparation visuelle avant le panier
 st.sidebar.markdown("---")
-
 st.sidebar.header("🛒 Votre Panier")
+
 
 if not st.session_state.panier:
     st.sidebar.info("Votre panier est vide pour le moment. ✨")
