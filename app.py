@@ -22,9 +22,9 @@ st.set_page_config(
 # ============================================================
 # À mettre dans .streamlit/secrets.toml
 #
-# GOOGLE_SHEET_URL = "..."
+# GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing"
 # STOCK_API_URL = "..."
-# DISCORD_WEBHOOK = "..."
+# DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M5OsuT3FlNqt_"
 #
 # Les mots de passe utilisateurs doivent également être
 # placés dans les secrets.
