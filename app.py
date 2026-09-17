@@ -159,18 +159,34 @@ def normaliser_texte(texte):
     return texte
 
 
-def trouver_colonne(df, noms_possibles):
-    """Trouve une colonne même si son nom varie légèrement."""
-    colonnes = {
-        normaliser_texte(c): c
-        for c in df.columns
+def trouver_colonne(objet, noms_possibles):
+    """
+    Trouve une colonne sans supposer que l'objet est un DataFrame.
+    Fonctionne avec :
+    - un DataFrame (.columns)
+    - une ligne pandas Series (.index)
+    - une liste de noms de colonnes
+    """
+
+    if hasattr(objet, "columns"):
+        colonnes = list(objet.columns)
+
+    elif hasattr(objet, "index"):
+        colonnes = list(objet.index)
+
+    else:
+        colonnes = list(objet)
+
+    colonnes_normalisees = {
+        normaliser_texte(colonne): colonne
+        for colonne in colonnes
     }
 
     for nom in noms_possibles:
         nom_normalise = normaliser_texte(nom)
 
-        if nom_normalise in colonnes:
-            return colonnes[nom_normalise]
+        if nom_normalise in colonnes_normalisees:
+            return colonnes_normalisees[nom_normalise]
 
     return None
 
@@ -209,7 +225,7 @@ def charger_produits():
 
     df.columns = [
         str(c).strip()
-        for c in df.columns
+
     ]
 
     return df
@@ -344,25 +360,31 @@ def nom_produit(article):
 
 
 def categorie_produit(article):
+
     colonne = trouver_colonne(
         article.index,
         [
             "Catégorie",
             "Categorie",
             "Catégorie produit",
-            "Famille",
+            "Famille"
         ]
     )
 
     if colonne is None:
         return "Autres"
 
-    valeur = article[colonne]
+    valeur = article.get(colonne, "")
 
-    if pd.isna(valeur) or not str(valeur).strip():
+    if pd.isna(valeur):
         return "Autres"
 
-    return str(valeur).strip()
+    valeur = str(valeur).strip()
+
+    if not valeur:
+        return "Autres"
+
+    return valeur
 
 
 def description_produit(article):
