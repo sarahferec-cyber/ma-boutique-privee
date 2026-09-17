@@ -26,7 +26,7 @@ STOCK_API_URL = (
     "/exec"
 )
 # Mets ici ton NOUVEAU webhook Discord
-DISCORD_WEBHOOK = "COLLE_TON_NOUVEAU_WEBHOOK_ICI"
+DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M5OsuT3FlNqt_"
 COMPTES_AUTORISES = {
     "sarah": "shopping2026",
     "maman": "parfaite",
