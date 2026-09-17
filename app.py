@@ -16,17 +16,56 @@ st.set_page_config(
     layout="wide"
 )
 
+
+# ============================================================
+# COMPTES AUTORISÉS
+# ============================================================
+
+COMPTES_AUTORISES = {
+    "sarah": "shopping2026",
+    "maman": "parfaite",
+    "carole": "unique",
+    "ben": "groot",
+    "helene": "mae",
+    "laurie": "mojito",
+    "tiffany": "babysitter",
+    "lesfilles": "promos",
+    "invite": "bonplan11"
+}
+
+
+# ============================================================
+# DISCORD
+# ============================================================
+
+DISCORD_WEBHOOK = "COLLE_TON_WEBHOOK_ICI"
+
+
+# ============================================================
+# GOOGLE SHEETS
+# ============================================================
+
 GOOGLE_SHEET_URL = (
     "https://docs.google.com/spreadsheets/d/"
     "1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/"
     "edit?usp=sharing"
 )
 
+
+# ============================================================
+# APPS SCRIPT POUR LE STOCK
+# ============================================================
+
 APPS_SCRIPT_URL = (
     "https://script.google.com/macros/s/"
     "AKfycbxTep4v3fevHxUE0Cv6f6SE1IRie_xCNctecO_7Ez_XXhNUQJlhc46l6mkDe-FQk7s5lA/"
     "exec"
 )
+
+
+# ============================================================
+# PARAMÈTRES LIVRAISON
+# ============================================================
 
 PRIX_LIVRAISON_KM = 0.10
 SEUIL_LIVRAISON_GRATUITE = 30.00
@@ -39,6 +78,7 @@ SEUIL_LIVRAISON_GRATUITE = 30.00
 st.markdown(
     """
     <style>
+
     .main {
         background-color: #fffafc;
     }
@@ -51,6 +91,7 @@ st.markdown(
         border-radius: 10px;
         font-weight: bold;
     }
+
     </style>
     """,
     unsafe_allow_html=True
@@ -58,7 +99,7 @@ st.markdown(
 
 
 # ============================================================
-# INITIALISATION
+# INITIALISATION SESSION
 # ============================================================
 
 if "connecte" not in st.session_state:
@@ -72,10 +113,11 @@ if "panier" not in st.session_state:
 
 
 # ============================================================
-# OUTILS
+# FONCTION NORMALISATION
 # ============================================================
 
 def normaliser_texte(texte):
+
     texte = str(texte).strip().lower()
 
     texte = unicodedata.normalize(
@@ -92,8 +134,17 @@ def normaliser_texte(texte):
     return texte
 
 
-def convertir_nombre(valeur, valeur_defaut=0.0):
+# ============================================================
+# CONVERSION DES PRIX / QUANTITÉS
+# ============================================================
+
+def convertir_nombre(
+    valeur,
+    valeur_defaut=0.0
+):
+
     try:
+
         if pd.isna(valeur):
             return valeur_defaut
 
@@ -109,26 +160,39 @@ def convertir_nombre(valeur, valeur_defaut=0.0):
         return float(texte)
 
     except Exception:
+
         return valeur_defaut
 
 
-def trouver_colonne(colonnes, alias):
-    alias_normalises = {
+# ============================================================
+# RECHERCHE D'UNE COLONNE
+# ============================================================
+
+def trouver_colonne(
+    colonnes,
+    alias
+):
+
+    colonnes_normalisees = {
         normaliser_texte(colonne): colonne
         for colonne in colonnes
     }
 
     for nom in alias:
+
         nom_normalise = normaliser_texte(nom)
 
-        if nom_normalise in alias_normalises:
-            return alias_normalises[nom_normalise]
+        if nom_normalise in colonnes_normalisees:
+
+            return colonnes_normalisees[
+                nom_normalise
+            ]
 
     return None
 
 
 # ============================================================
-# GOOGLE SHEETS
+# CHARGEMENT GOOGLE SHEETS
 # ============================================================
 
 @st.cache_data(ttl=60)
@@ -139,12 +203,19 @@ def charger_produits():
         "/export?format=csv"
     )
 
-    dataframe = pd.read_csv(url_csv)
+    dataframe = pd.read_csv(
+        url_csv
+    )
 
     dataframe.columns = [
         str(colonne).strip()
         for colonne in dataframe.columns
     ]
+
+
+    # --------------------------------------------------------
+    # COLONNES
+    # --------------------------------------------------------
 
     colonne_photo = trouver_colonne(
         dataframe.columns,
@@ -157,6 +228,7 @@ def charger_produits():
         ]
     )
 
+
     colonne_nom = trouver_colonne(
         dataframe.columns,
         [
@@ -168,6 +240,7 @@ def charger_produits():
         ]
     )
 
+
     colonne_categorie = trouver_colonne(
         dataframe.columns,
         [
@@ -177,6 +250,7 @@ def charger_produits():
             "rayon"
         ]
     )
+
 
     colonne_format = trouver_colonne(
         dataframe.columns,
@@ -189,6 +263,7 @@ def charger_produits():
         ]
     )
 
+
     colonne_stock = trouver_colonne(
         dataframe.columns,
         [
@@ -198,6 +273,7 @@ def charger_produits():
             "stock disponible"
         ]
     )
+
 
     colonne_prix_base = trouver_colonne(
         dataframe.columns,
@@ -210,6 +286,7 @@ def charger_produits():
         ]
     )
 
+
     colonne_prix_promo = trouver_colonne(
         dataframe.columns,
         [
@@ -220,66 +297,143 @@ def charger_produits():
         ]
     )
 
+
     if not colonne_nom:
+
         st.error(
             "❌ Impossible de trouver la colonne du nom du produit."
         )
+
         st.stop()
+
+
+    # --------------------------------------------------------
+    # NOUVEAU TABLEAU
+    # --------------------------------------------------------
 
     produits = pd.DataFrame()
 
-    produits["nom"] = dataframe[colonne_nom].fillna("").astype(str).str.strip()
+
+    produits["nom"] = (
+        dataframe[colonne_nom]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+
+
+    # --------------------------------------------------------
+    # PHOTO
+    # --------------------------------------------------------
 
     if colonne_photo:
+
         produits["photo"] = (
             dataframe[colonne_photo]
             .fillna("")
             .astype(str)
             .str.strip()
         )
+
     else:
+
         produits["photo"] = ""
 
+
+    # --------------------------------------------------------
+    # CATÉGORIE
+    # --------------------------------------------------------
+
     if colonne_categorie:
+
         produits["categorie"] = (
             dataframe[colonne_categorie]
             .fillna("")
             .astype(str)
             .str.strip()
         )
+
     else:
+
         produits["categorie"] = ""
 
+
+    # --------------------------------------------------------
+    # FORMAT
+    # --------------------------------------------------------
+
     if colonne_format:
+
         produits["format"] = (
             dataframe[colonne_format]
             .fillna("")
             .astype(str)
             .str.strip()
         )
+
     else:
+
         produits["format"] = ""
 
+
+    # --------------------------------------------------------
+    # STOCK
+    # --------------------------------------------------------
+
     if colonne_stock:
-        produits["stock"] = dataframe[colonne_stock].apply(
-            convertir_nombre
-        ).astype(int)
+
+        produits["stock"] = (
+            dataframe[colonne_stock]
+            .apply(convertir_nombre)
+            .astype(int)
+        )
+
     else:
+
         produits["stock"] = 0
 
+
+    # --------------------------------------------------------
+    # PRIX NORMAL
+    # --------------------------------------------------------
+
     if colonne_prix_base:
-        produits["prix_base"] = dataframe[colonne_prix_base].apply(
-            convertir_nombre
+
+        produits["prix_base"] = (
+            dataframe[colonne_prix_base]
+            .apply(convertir_nombre)
         )
+
     else:
+
         produits["prix_base"] = 0.0
 
+
+    # --------------------------------------------------------
+    # PRIX PROMO
+    # --------------------------------------------------------
+
     if colonne_prix_promo:
-        produits["prix_promo"] = dataframe[colonne_prix_promo].apply(
-            lambda valeur: convertir_nombre(valeur, 0.0)
+
+        produits["prix_promo"] = (
+            dataframe[colonne_prix_promo]
+            .apply(
+                lambda valeur:
+                    convertir_nombre(
+                        valeur,
+                        0.0
+                    )
+            )
         )
+
     else:
+
         produits["prix_promo"] = 0.0
+
+
+    # --------------------------------------------------------
+    # PRIX FINAL
+    # --------------------------------------------------------
 
     produits["prix"] = produits.apply(
         lambda ligne:
@@ -289,52 +443,70 @@ def charger_produits():
         axis=1
     )
 
+
+    # --------------------------------------------------------
+    # SUPPRESSION DES LIGNES VIDES
+    # --------------------------------------------------------
+
     produits = produits[
         produits["nom"].str.strip() != ""
     ]
 
-    return produits.reset_index(drop=True)
+
+    return produits.reset_index(
+        drop=True
+    )
 
 
 # ============================================================
-# DISCORD
+# ENVOYER NOTIFICATION DISCORD
 # ============================================================
 
 def envoyer_discord(message):
 
     try:
 
-        webhook = st.secrets.get(
-            "https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M5OsuT3FlNqt_",
-            ""
-        )
+        if not DISCORD_WEBHOOK:
 
-        if not webhook:
             st.error(
-                "❌ Webhook Discord introuvable."
+                "❌ Le webhook Discord n'est pas renseigné."
             )
+
             return False
 
+
         reponse = requests.post(
-            webhook,
+            DISCORD_WEBHOOK,
             json={
                 "content": message
             },
             timeout=15
         )
 
+
         if reponse.status_code in [200, 204]:
+
             return True
 
+
         st.error(
-            "❌ Discord a refusé la notification. "
+            "❌ Discord a refusé la notification."
+        )
+
+        st.code(
             f"Code HTTP : {reponse.status_code}"
         )
 
+
         if reponse.text:
-            st.code(reponse.text)
+
+            st.code(
+                reponse.text
+            )
+
 
         return False
+
 
     except Exception as erreur:
 
@@ -342,16 +514,21 @@ def envoyer_discord(message):
             "❌ Impossible de contacter Discord."
         )
 
-        st.code(str(erreur))
+        st.code(
+            str(erreur)
+        )
 
         return False
 
 
 # ============================================================
-# STOCK / APPS SCRIPT
+# RETIRER DU STOCK
 # ============================================================
 
-def retirer_stock(produit, quantite):
+def retirer_stock(
+    produit,
+    quantite
+):
 
     try:
 
@@ -362,37 +539,57 @@ def retirer_stock(produit, quantite):
             "utilisateur": st.session_state.utilisateur
         }
 
+
         reponse = requests.post(
             APPS_SCRIPT_URL,
             json=donnees,
             timeout=20
         )
 
+
         if reponse.status_code != 200:
+
             st.error(
-                "❌ Le serveur de stock a refusé la commande. "
+                "❌ Le serveur de stock a refusé la commande."
+            )
+
+            st.code(
                 f"Code HTTP : {reponse.status_code}"
             )
+
             return False
 
+
         try:
+
             resultat = reponse.json()
 
-            if isinstance(resultat, dict):
 
-                if resultat.get("success") is False:
+            if isinstance(
+                resultat,
+                dict
+            ):
+
+                if resultat.get(
+                    "success"
+                ) is False:
+
                     st.error(
                         resultat.get(
                             "message",
                             "Le stock n'a pas pu être modifié."
                         )
                     )
+
                     return False
 
         except Exception:
+
             pass
 
+
         return True
+
 
     except Exception as erreur:
 
@@ -400,43 +597,57 @@ def retirer_stock(produit, quantite):
             "❌ Impossible de contacter le serveur de stock."
         )
 
-        st.code(str(erreur))
+        st.code(
+            str(erreur)
+        )
 
         return False
 
 
 # ============================================================
-# CONNEXION
+# PAGE DE CONNEXION
 # ============================================================
 
 def afficher_connexion():
 
-    st.title("🛍️ Mes Bons Plans de Sarah 🌸")
+    st.title(
+        "🛍️ Mes Bons Plans de Sarah 🌸"
+    )
 
-    st.subheader("🔐 Connexion")
+    st.subheader(
+        "🔐 Connexion"
+    )
+
 
     utilisateur = st.text_input(
         "Identifiant"
     )
+
 
     mot_de_passe = st.text_input(
         "Mot de passe",
         type="password"
     )
 
+
     if st.button(
         "Se connecter",
         use_container_width=True
     ):
 
-        comptes = st.secrets.get(
-            "COMPTES_AUTORISES",
-            {}
+        utilisateur_propre = (
+            utilisateur
+            .strip()
+            .lower()
         )
 
-        mot_de_passe_attendu = comptes.get(
-            utilisateur.strip().lower()
+
+        mot_de_passe_attendu = (
+            COMPTES_AUTORISES.get(
+                utilisateur_propre
+            )
         )
+
 
         if (
             mot_de_passe_attendu
@@ -444,8 +655,9 @@ def afficher_connexion():
         ):
 
             st.session_state.connecte = True
+
             st.session_state.utilisateur = (
-                utilisateur.strip().lower()
+                utilisateur_propre
             )
 
             st.success(
@@ -453,6 +665,7 @@ def afficher_connexion():
             )
 
             st.rerun()
+
 
         else:
 
@@ -462,33 +675,38 @@ def afficher_connexion():
 
 
 # ============================================================
-# APPLICATION
+# AFFICHER CONNEXION SI PAS CONNECTÉ
 # ============================================================
 
 if not st.session_state.connecte:
 
     afficher_connexion()
+
     st.stop()
 
 
 # ============================================================
-# EN-TÊTE
+# EN-TÊTE APPLICATION
 # ============================================================
 
-col1, col2 = st.columns([4, 1])
+colonne_titre, colonne_deconnexion = st.columns(
+    [4, 1]
+)
 
-with col1:
+
+with colonne_titre:
 
     st.title(
         "🛍️ Mes Bons Plans de Sarah 🌸"
     )
 
     st.caption(
-        f"Connecté en tant que : "
+        "Connecté en tant que : "
         f"**{st.session_state.utilisateur}**"
     )
 
-with col2:
+
+with colonne_deconnexion:
 
     if st.button(
         "🚪 Déconnexion",
@@ -496,14 +714,16 @@ with col2:
     ):
 
         st.session_state.connecte = False
+
         st.session_state.utilisateur = ""
+
         st.session_state.panier = {}
 
         st.rerun()
 
 
 # ============================================================
-# CHARGEMENT DES PRODUITS
+# CHARGEMENT PRODUITS
 # ============================================================
 
 produits = charger_produits()
@@ -519,23 +739,33 @@ if produits.empty:
 
 
 # ============================================================
-# FILTRES
+# RECHERCHE
 # ============================================================
 
-st.subheader("🔎 Rechercher")
+st.subheader(
+    "🔎 Rechercher un produit"
+)
+
 
 recherche = st.text_input(
-    "Rechercher un produit",
+    "Recherche",
     placeholder="Ex : lait, chocolat, lessive..."
 )
+
+
+# ============================================================
+# CATÉGORIES
+# ============================================================
 
 categories = sorted(
     [
         categorie
-        for categorie in produits["categorie"].dropna().unique()
+        for categorie
+        in produits["categorie"].dropna().unique()
         if str(categorie).strip()
     ]
 )
+
 
 categorie_selectionnee = st.selectbox(
     "Catégorie",
@@ -543,20 +773,27 @@ categorie_selectionnee = st.selectbox(
 )
 
 
+# ============================================================
+# FILTRAGE
+# ============================================================
+
 produits_affiches = produits.copy()
 
 
 if recherche.strip():
 
-    texte_recherche = normaliser_texte(
+    recherche_normalisee = normaliser_texte(
         recherche
     )
+
 
     produits_affiches = produits_affiches[
         produits_affiches["nom"].apply(
             lambda nom:
-                texte_recherche
-                in normaliser_texte(nom)
+                recherche_normalisee
+                in normaliser_texte(
+                    nom
+                )
         )
     ]
 
@@ -570,29 +807,43 @@ if categorie_selectionnee != "Toutes":
 
 
 # ============================================================
-# PRODUITS
+# AFFICHAGE PRODUITS
 # ============================================================
 
 st.subheader(
-    f"🛒 Produits ({len(produits_affiches)})"
+    f"🛒 Produits disponibles : "
+    f"{len(produits_affiches)}"
 )
 
 
 for _, produit in produits_affiches.iterrows():
 
     nom = produit["nom"]
-    prix = float(produit["prix"])
-    stock = int(produit["stock"])
 
-    col_photo, col_infos = st.columns(
+    prix = float(
+        produit["prix"]
+    )
+
+    stock = int(
+        produit["stock"]
+    )
+
+
+    colonne_photo, colonne_infos = st.columns(
         [1, 2]
     )
 
-    with col_photo:
+
+    # --------------------------------------------------------
+    # PHOTO
+    # --------------------------------------------------------
+
+    with colonne_photo:
 
         if produit["photo"]:
 
             try:
+
                 st.image(
                     produit["photo"],
                     use_container_width=True
@@ -610,25 +861,44 @@ for _, produit in produits_affiches.iterrows():
                 "📷 Pas de photo"
             )
 
-    with col_infos:
 
-        st.subheader(nom)
+    # --------------------------------------------------------
+    # INFORMATIONS PRODUIT
+    # --------------------------------------------------------
+
+    with colonne_infos:
+
+        st.subheader(
+            nom
+        )
+
 
         if produit["categorie"]:
 
             st.caption(
-                f"Catégorie : {produit['categorie']}"
+                f"Catégorie : "
+                f"{produit['categorie']}"
             )
+
 
         if produit["format"]:
 
             st.caption(
-                f"Format : {produit['format']}"
+                f"Format : "
+                f"{produit['format']}"
             )
+
+
+        # ----------------------------------------------------
+        # PRIX PROMO
+        # ----------------------------------------------------
 
         if (
             produit["prix_promo"] > 0
-            and produit["prix_base"] > produit["prix_promo"]
+            and
+            produit["prix_base"]
+            >
+            produit["prix_promo"]
         ):
 
             st.markdown(
@@ -642,6 +912,11 @@ for _, produit in produits_affiches.iterrows():
                 f"**{prix:.2f} €**"
             )
 
+
+        # ----------------------------------------------------
+        # STOCK
+        # ----------------------------------------------------
+
         if stock <= 0:
 
             st.error(
@@ -654,6 +929,7 @@ for _, produit in produits_affiches.iterrows():
                 f"Disponible : {stock}"
             )
 
+
             quantite = st.number_input(
                 "Quantité",
                 min_value=1,
@@ -663,28 +939,37 @@ for _, produit in produits_affiches.iterrows():
                 key=f"quantite_{nom}"
             )
 
+
             if st.button(
                 "🛒 Ajouter au panier",
                 key=f"ajouter_{nom}",
                 use_container_width=True
             ):
 
-                quantite_deja = st.session_state.panier.get(
-                    nom,
-                    {}
-                ).get(
-                    "quantite",
-                    0
+                quantite_deja = (
+                    st.session_state.panier
+                    .get(
+                        nom,
+                        {}
+                    )
+                    .get(
+                        "quantite",
+                        0
+                    )
                 )
 
+
                 nouvelle_quantite = (
-                    quantite_deja + quantite
+                    quantite_deja
+                    + quantite
                 )
+
 
                 if nouvelle_quantite > stock:
 
                     st.error(
-                        "❌ Quantité supérieure au stock disponible."
+                        "❌ Quantité supérieure "
+                        "au stock disponible."
                     )
 
                 else:
@@ -694,9 +979,12 @@ for _, produit in produits_affiches.iterrows():
                         "prix": prix
                     }
 
+
                     st.success(
-                        f"✅ {quantite} × {nom} ajouté au panier."
+                        f"✅ {quantite} × "
+                        f"{nom} ajouté au panier."
                     )
+
 
     st.divider()
 
@@ -705,7 +993,10 @@ for _, produit in produits_affiches.iterrows():
 # PANIER
 # ============================================================
 
-st.subheader("🛒 Mon panier")
+st.subheader(
+    "🛒 Mon panier"
+)
+
 
 if not st.session_state.panier:
 
@@ -713,9 +1004,15 @@ if not st.session_state.panier:
         "Ton panier est vide."
     )
 
+
 else:
 
     sous_total = 0.0
+
+
+    # --------------------------------------------------------
+    # ARTICLES
+    # --------------------------------------------------------
 
     for nom, article in list(
         st.session_state.panier.items()
@@ -733,42 +1030,61 @@ else:
             quantite * prix
         )
 
+
         sous_total += total_article
 
-        col1, col2, col3, col4 = st.columns(
+
+        colonne_nom, colonne_quantite, colonne_total, colonne_supprimer = st.columns(
             [4, 1, 2, 1]
         )
 
-        with col1:
-            st.write(nom)
 
-        with col2:
-            st.write(f"x{quantite}")
+        with colonne_nom:
 
-        with col3:
+            st.write(
+                nom
+            )
+
+
+        with colonne_quantite:
+
+            st.write(
+                f"x{quantite}"
+            )
+
+
+        with colonne_total:
+
             st.write(
                 f"{total_article:.2f} €"
             )
 
-        with col4:
+
+        with colonne_supprimer:
 
             if st.button(
                 "🗑️",
                 key=f"supprimer_{nom}"
             ):
 
-                del st.session_state.panier[nom]
+                del st.session_state.panier[
+                    nom
+                ]
+
                 st.rerun()
 
+
     st.markdown(
-        f"### Sous-total produits : {sous_total:.2f} €"
+        f"### Sous-total produits : "
+        f"{sous_total:.2f} €"
     )
 
+
     # ========================================================
-    # LIVRAISON
+    # MODE DE RÉCEPTION
     # ========================================================
 
-    mode_livraison = st.radio(
+    mode_reception = st.radio(
         "Mode de réception",
         [
             "Retrait / remise en main propre",
@@ -776,10 +1092,17 @@ else:
         ]
     )
 
+
     frais_livraison = 0.0
+
     distance_km = 0.0
 
-    if mode_livraison == "Livraison":
+
+    # ========================================================
+    # LIVRAISON
+    # ========================================================
+
+    if mode_reception == "Livraison":
 
         distance_km = st.number_input(
             "Distance de livraison (km)",
@@ -788,14 +1111,17 @@ else:
             step=1.0
         )
 
+
         if sous_total >= SEUIL_LIVRAISON_GRATUITE:
 
             frais_livraison = 0.0
 
+
             st.success(
-                "🎉 Livraison gratuite : "
-                f"commande de {sous_total:.2f} €."
+                "🎉 Livraison gratuite ! "
+                "Commande de 30 € ou plus."
             )
+
 
         else:
 
@@ -804,18 +1130,27 @@ else:
                 * PRIX_LIVRAISON_KM
             )
 
+
             st.info(
-                f"Livraison : {distance_km:.1f} km × "
+                f"🚚 {distance_km:.1f} km × "
                 f"{PRIX_LIVRAISON_KM:.2f} €/km = "
                 f"{frais_livraison:.2f} €"
             )
 
+
+    # ========================================================
+    # TOTAL
+    # ========================================================
+
     total_commande = (
-        sous_total + frais_livraison
+        sous_total
+        + frais_livraison
     )
 
+
     st.markdown(
-        f"## 💰 Total : {total_commande:.2f} €"
+        f"## 💰 Total : "
+        f"{total_commande:.2f} €"
     )
 
 
@@ -828,10 +1163,16 @@ else:
         use_container_width=True
     ):
 
+        # ----------------------------------------------------
+        # DISTANCE OBLIGATOIRE POUR LIVRAISON
+        # ----------------------------------------------------
+
         if (
-            mode_livraison == "Livraison"
-            and sous_total < SEUIL_LIVRAISON_GRATUITE
-            and distance_km <= 0
+            mode_reception == "Livraison"
+            and
+            sous_total < SEUIL_LIVRAISON_GRATUITE
+            and
+            distance_km <= 0
         ):
 
             st.error(
@@ -840,58 +1181,88 @@ else:
 
         else:
 
-            # Vérification du stock avant validation
+            # ------------------------------------------------
+            # RECHARGEMENT DU STOCK
+            # ------------------------------------------------
+
             produits_actuels = charger_produits()
+
 
             stock_ok = True
 
-            for nom, article in st.session_state.panier.items():
+
+            for nom, article in (
+                st.session_state.panier.items()
+            ):
 
                 ligne = produits_actuels[
-                    produits_actuels["nom"] == nom
+                    produits_actuels["nom"]
+                    == nom
                 ]
+
 
                 if ligne.empty:
 
                     st.error(
-                        f"❌ Produit introuvable : {nom}"
+                        f"❌ Produit introuvable : "
+                        f"{nom}"
                     )
 
                     stock_ok = False
+
                     break
+
 
                 stock_disponible = int(
                     ligne.iloc[0]["stock"]
                 )
 
-                if article["quantite"] > stock_disponible:
+
+                if (
+                    article["quantite"]
+                    >
+                    stock_disponible
+                ):
 
                     st.error(
-                        f"❌ Stock insuffisant pour : {nom}. "
-                        f"Stock disponible : {stock_disponible}"
+                        f"❌ Stock insuffisant pour "
+                        f"{nom}. "
+                        f"Stock disponible : "
+                        f"{stock_disponible}"
                     )
 
                     stock_ok = False
+
                     break
+
+
+            # ------------------------------------------------
+            # TRAITEMENT COMMANDE
+            # ------------------------------------------------
 
             if stock_ok:
 
                 commande_ok = True
 
+
                 # ------------------------------------------------
-                # RETRAIT DU STOCK
+                # RETIRER LES PRODUITS DU STOCK
                 # ------------------------------------------------
 
-                for nom, article in st.session_state.panier.items():
+                for nom, article in (
+                    st.session_state.panier.items()
+                ):
 
                     succes_stock = retirer_stock(
                         nom,
                         article["quantite"]
                     )
 
+
                     if not succes_stock:
 
                         commande_ok = False
+
                         break
 
 
@@ -902,70 +1273,112 @@ else:
                 if commande_ok:
 
                     maintenant = datetime.now(
-                        ZoneInfo("Europe/Paris")
+                        ZoneInfo(
+                            "Europe/Paris"
+                        )
                     )
 
-                    lignes_discord = []
 
-                    for nom, article in st.session_state.panier.items():
+                    lignes_produits = []
 
-                        quantite = article["quantite"]
-                        prix = article["prix"]
+
+                    for nom, article in (
+                        st.session_state.panier.items()
+                    ):
+
+                        quantite = int(
+                            article["quantite"]
+                        )
+
+                        prix = float(
+                            article["prix"]
+                        )
+
                         total_article = (
                             quantite * prix
                         )
 
-                        lignes_discord.append(
-                            f"• {quantite} × {nom} — "
-                            f"{prix:.2f} € / unité = "
-                            f"{total_article:.2f} €"
+
+                        lignes_produits.append(
+                            f"• {quantite} × "
+                            f"{nom} — "
+                            f"{prix:.2f} € / unité "
+                            f"= {total_article:.2f} €"
                         )
 
-                    liste_produits = "\n".join(
-                        lignes_discord
+
+                    produits_discord = "\n".join(
+                        lignes_produits
                     )
 
-                    if mode_livraison == "Livraison":
+
+                    if (
+                        mode_reception
+                        == "Livraison"
+                    ):
 
                         livraison_discord = (
-                            f"🚚 Livraison\n"
-                            f"Distance : {distance_km:.1f} km\n"
-                            f"Frais : {frais_livraison:.2f} €"
+                            "🚚 Livraison\n"
+                            f"Distance : "
+                            f"{distance_km:.1f} km\n"
+                            f"Frais : "
+                            f"{frais_livraison:.2f} €"
                         )
 
                     else:
 
                         livraison_discord = (
-                            "🤝 Retrait / remise en main propre\n"
+                            "🤝 Retrait / remise "
+                            "en main propre\n"
                             "Frais : 0.00 €"
                         )
 
+
                     message_discord = (
                         "🛒 **NOUVELLE COMMANDE !**\n\n"
+
                         f"👤 Client : "
                         f"{st.session_state.utilisateur}\n"
+
                         f"🕐 Date : "
                         f"{maintenant.strftime('%d/%m/%Y à %H:%M')}\n\n"
-                        f"📦 **Produits :**\n"
-                        f"{liste_produits}\n\n"
+
+                        "📦 **Produits :**\n"
+
+                        f"{produits_discord}\n\n"
+
                         f"💰 Sous-total : "
                         f"{sous_total:.2f} €\n"
-                        f"{livraison_discord}\n"
+
+                        f"{livraison_discord}\n\n"
+
                         f"💳 **TOTAL : "
                         f"{total_commande:.2f} €**"
                     )
+
 
                     discord_ok = envoyer_discord(
                         message_discord
                     )
 
+
                     # ------------------------------------------------
-                    # FIN DE COMMANDE
+                    # VIDER LE PANIER
                     # ------------------------------------------------
 
                     st.session_state.panier = {}
 
+
+                    # ------------------------------------------------
+                    # ACTUALISER GOOGLE SHEETS
+                    # ------------------------------------------------
+
                     charger_produits.clear()
+
+
+                    # ------------------------------------------------
+                    # MESSAGE
+                    # ------------------------------------------------
 
                     if discord_ok:
 
@@ -982,7 +1395,13 @@ else:
                             "n'a pas pu être envoyée."
                         )
 
+
+                    # ------------------------------------------------
+                    # BALLOONS
+                    # ------------------------------------------------
+
                     st.balloons()
+
 
                     st.rerun()
 
@@ -997,29 +1416,29 @@ st.subheader(
     "📜 Conditions générales"
 )
 
+
 st.markdown(
     """
-    **Prix :** les prix affichés correspondent à des relevés /
-    sondages de prix effectués pendant des promotions, à la date
-    du relevé.
+    **Prix :** les prix affichés correspondent à des relevés de prix
+    effectués pendant des promotions, à la date du relevé.
 
-    Les prix pratiqués en magasin peuvent évoluer et une promotion
-    peut prendre fin à tout moment. Le prix affiché dans cette
+    Les prix pratiqués en magasin peuvent évoluer et les promotions
+    peuvent prendre fin à tout moment. Le prix affiché dans cette
     application peut donc ne plus correspondre au prix actuellement
     pratiqué en magasin.
 
-    Les prix sont donnés à titre indicatif et l'utilisateur de
-    l'application ne peut pas être tenu responsable d'une modification
-    ultérieure des prix par le magasin.
+    L'utilisateur de cette application ne peut pas être tenu
+    responsable d'une modification ultérieure des prix par le magasin.
 
     **Stocks :** les disponibilités peuvent également évoluer et un
     produit peut devenir indisponible entre le relevé et la commande.
 
-    **Livraison :** pour une commande dont le montant des produits est
-    inférieur à 30 €, la livraison est facturée 0,10 € par kilomètre.
+    **Livraison :** lorsque le montant des produits est inférieur à
+    30 €, la livraison est facturée 0,10 € par kilomètre.
+
     À partir de 30 € de produits, la livraison est gratuite.
 
-    **Commandes :** une commande est considérée comme enregistrée
-    lorsque le stock a été traité par l'application.
+    **Commande :** une commande est enregistrée lorsque le traitement
+    du stock a été effectué par l'application.
     """
 )
