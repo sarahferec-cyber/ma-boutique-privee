@@ -187,12 +187,6 @@ def trouver_colonne(objet, noms_possibles):
 
 @st.cache_data(ttl=30)
 def charger_produits():
-    """
-    Charge les produits depuis Google Sheets.
-
-    Le fichier doit être partagé au minimum en lecture
-    pour que l'URL CSV fonctionne.
-    """
 
     match = re.search(
         r"/spreadsheets/d/([a-zA-Z0-9-_]+)",
@@ -207,16 +201,21 @@ def charger_produits():
     spreadsheet_id = match.group(1)
 
     url_csv = (
-        f"https://docs.google.com/spreadsheets/d/"
-        f"{spreadsheet_id}/export?format=csv"
+        "https://docs.google.com/spreadsheets/d/"
+        + spreadsheet_id
+        + "/export?format=csv"
     )
 
     df = pd.read_csv(url_csv)
 
-    df.columns = [
-        str(c).strip()
+    nouvelles_colonnes = []
 
-    ]
+    for colonne in df.columns:
+        nouvelles_colonnes.append(
+            str(colonne).strip()
+        )
+
+    df.columns = nouvelles_colonnes
 
     return df
 
