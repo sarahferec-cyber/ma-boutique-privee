@@ -170,7 +170,7 @@ def trouver_colonne(objet, noms_possibles):
     else:
         colonnes = list(objet)
 
-    for colonne in colonnes:
+
 
         colonne_normalisee = normaliser_texte(colonne)
 
