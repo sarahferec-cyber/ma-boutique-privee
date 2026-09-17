@@ -262,17 +262,24 @@ if not col_nom or not col_stock:
     st.stop()
 
 # ============================================================
-# 12. BARRE LATÉRALE : FILTRES & PANIER
+# 12. BARRE LATÉRALE : FILTRES & PANIER (NETTOYÉ ✨)
 # ============================================================
 st.sidebar.header("🎯 Filtres de recherche")
 
-if col_cat:
+if col_cat in df.columns:
     categories_disponibles = ["Toutes"] + sorted(list(df[col_cat].dropna().unique()))
 else:
     categories_disponibles = ["Toutes"]
 categorie_choisie = st.sidebar.selectbox("Filtrer par rayon :", categories_disponibles)
 
+# Filtrage du tableau de données selon le choix de l'utilisateur
+if categorie_choisie == "Toutes":
+    df_filtre = df
+else:
+    df_filtre = df[df[col_cat] == categorie_choisie]
+
 st.sidebar.markdown("---")
+
 st.sidebar.header("🛒 Votre Panier")
 
 if not st.session_state.panier:
