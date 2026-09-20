@@ -736,7 +736,7 @@ st.markdown(
     """
     <div style="background-color:#f9f9f9; padding:15px; border-radius:5px; font-size:12px; color:#555555;">
         <p style="margin-bottom:5px;"><strong>🌸 Mentions Légales & Conformité</strong></p>
-        <p style="margin-bottom:5px;"><strong>Éditeur du site :</strong> Site géré de manière privée par Sarah (Mes Bons Plans de Sarah). Ce site ne constitue pas une boutique marchande en ligne automatisée : il s'agit d'un outil de visualisation de catalogue et de réservation de stocks physiques.</p>
+        <p style="margin-bottom:5px;"><strong>Éditeur du site :</strong> Site géré par Sarah (Mes Bons Plans de Sarah), exploité sous le statut légal de la <strong>micro-entreprise</strong>. Ce site ne constitue pas une boutique marchande en ligne automatisée : il s'agit d'un outil de visualisation de catalogue et de réservation de stocks physiques.</p>
         <p style="margin-bottom:5px;"><strong>Hébergement :</strong> Ce service est hébergé de manière sécurisée par la plateforme Streamlit Cloud / GitHub.</p>
         <p style="margin-bottom:5px;"><strong>RGPD / Protection des données :</strong> Les seules données personnelles collectées de manière éphémère sont vos Nom et Prénom au moment de la validation finale du panier. Ces informations sont transmises de manière sécurisée à notre outil interne (Discord/Google Sheets) aux seules fins de préparation et de mise à disposition de votre commande. Vous disposez d'un droit d'accès et de suppression en contactant directement l'administratrice.</p>
     </div>
