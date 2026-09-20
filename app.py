@@ -51,9 +51,9 @@ def secret_str(cle, defaut=""):
         return defaut
 
 
-GOOGLE_SHEET_URL = secret_str("GOOGLE_SHEET_URL")
-STOCK_API_URL = secret_str("STOCK_API_URL")
-DISCORD_WEBHOOK = secret_str("DISCORD_WEBHOOK")
+GOOGLE_SHEET_URL = secret_str("https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing")
+STOCK_API_URL = secret_str("https://script.google.com/macros/s/AKfycbxTep4v3fevHxUE0Cv6f6SE1IRie_xCNctecO_7Ez_XXhNUQJlhc46l6mkDe-FQk7s5lA/exec")
+DISCORD_WEBHOOK = secret_str("https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M5OsuT3FlNqt_"")
 
 # Compte administration uniquement.
 # [admin]
