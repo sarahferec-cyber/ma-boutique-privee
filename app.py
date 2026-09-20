@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import re
 import unicodedata
+
 # ============================================================
 # CONFIGURATION
 # ============================================================
@@ -12,6 +13,7 @@ STOCK_API_URL = "https://script.google.com/macros/s/AKfycbxTep4v3fevHxUE0Cv6f6SE
 DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M5OsuT3FlNqt_"
 PRIX_CARBURANT = 1.80
 CONSOMMATION_L_100KM = 6.5
+
 # ============================================================
 # CONFIG STREAMLIT
 # ============================================================
@@ -20,6 +22,7 @@ st.set_page_config(
     page_icon="🌸",
     layout="wide"
 )
+
 # ============================================================
 # SESSION
 # ============================================================
@@ -27,6 +30,7 @@ if "panier" not in st.session_state:
     st.session_state.panier = []
 if "commande_envoyee" not in st.session_state:
     st.session_state.commande_envoyee = False
+
 # ============================================================
 # OUTILS
 # ============================================================
@@ -42,6 +46,7 @@ def normaliser_texte(texte):
     texte = texte.lower()
     texte = re.sub(r"\s+", " ", texte).strip()
     return texte
+
 def trouver_colonne(article, noms_possibles):
     """
     Cherche une colonne dans une ligne Pandas.
@@ -62,6 +67,7 @@ def trouver_colonne(article, noms_possibles):
         if cle in colonnes_normalisees:
             return colonnes_normalisees[cle]
     return None
+
 def convertir_nombre(valeur, valeur_defaut=0.0):
     """Convertit proprement une valeur texte en nombre."""
     if valeur is None:
@@ -87,6 +93,7 @@ def convertir_nombre(valeur, valeur_defaut=0.0):
         return float(texte)
     except Exception:
         return valeur_defaut
+
 # ============================================================
 # COLONNES DU GOOGLE SHEET
 # ============================================================
@@ -107,6 +114,7 @@ def nom_produit(article):
     if pd.isna(valeur):
         return "Produit sans nom"
     return str(valeur).strip()
+
 def categorie_produit(article):
     colonne = trouver_colonne(
         article,
@@ -123,6 +131,7 @@ def categorie_produit(article):
     if pd.isna(valeur) or str(valeur).strip() == "":
         return "Autre"
     return str(valeur).strip()
+
 def photo_produit(article):
     colonne = trouver_colonne(
         article,
@@ -139,6 +148,7 @@ def photo_produit(article):
     if pd.isna(valeur):
         return ""
     return str(valeur).strip()
+
 def obtenir_stock(article):
     colonne = trouver_colonne(
         article,
@@ -155,6 +165,7 @@ def obtenir_stock(article):
         article.get(colonne, 0),
         0
     )
+
 def obtenir_prix(article):
     colonne = trouver_colonne(
         article,
@@ -171,6 +182,7 @@ def obtenir_prix(article):
         article.get(colonne, 0),
         0.0
     )
+
 def obtenir_prix_promo(article):
     colonne = trouver_colonne(
         article,
@@ -190,6 +202,7 @@ def obtenir_prix_promo(article):
     if prix <= 0:
         return None
     return prix
+
 def format_produit(article):
     colonne = trouver_colonne(
         article,
@@ -207,6 +220,7 @@ def format_produit(article):
     if pd.isna(valeur):
         return ""
     return str(valeur).strip()
+
 def prix_kg_litre(article):
     colonne = trouver_colonne(
         article,
@@ -225,6 +239,7 @@ def prix_kg_litre(article):
     if pd.isna(valeur):
         return ""
     return str(valeur).strip()
+
 # ============================================================
 # CHARGEMENT GOOGLE SHEET
 # ============================================================
@@ -259,6 +274,7 @@ def charger_produits():
         how="all"
     ).reset_index(drop=True)
     return dataframe
+
 # ============================================================
 # PANIER
 # ============================================================
@@ -280,6 +296,7 @@ def ajouter_au_panier(article):
             "prix": prix
         }
     )
+
 def retirer_du_panier(nom):
     for produit in st.session_state.panier:
         if produit["produit"] == nom:
@@ -287,8 +304,10 @@ def retirer_du_panier(nom):
             if produit["quantite"] <= 0:
                 st.session_state.panier.remove(produit)
             return
+
 def vider_panier():
     st.session_state.panier = []
+
 def calculer_total():
     total = 0.0
     for produit in st.session_state.panier:
@@ -297,6 +316,7 @@ def calculer_total():
             * produit["quantite"]
         )
     return total
+
 # ============================================================
 # ENVOI COMMANDE APPS SCRIPT
 # ============================================================
@@ -349,6 +369,7 @@ def envoyer_commande(nom_utilisateur):
         return False, f"Erreur de connexion : {erreur}"
     except Exception as erreur:
         return False, f"Erreur : {erreur}"
+
 # ============================================================
 # DISCORD
 # ============================================================
@@ -381,6 +402,7 @@ def envoyer_discord(nom_utilisateur):
         )
     except Exception:
         pass
+
 # ============================================================
 # CHARGEMENT DES PRODUITS (ACCES DIRECT)
 # ============================================================
@@ -397,10 +419,11 @@ if produits.empty:
         "⚠️ Aucun produit trouvé dans le Google Sheet."
     )
     st.stop()
+
 # ============================================================
 # HEADER
 # ============================================================
-col1, col2, col3 = st.columns([4, 2, 2])
+col1, col2, col3 = st.columns(3)
 with col1:
     st.title(NOM_BOUTIQUE)
     st.markdown(
@@ -417,6 +440,7 @@ with col3:
         len(st.session_state.panier)
     )
 st.divider()
+
 # ============================================================
 # RECHERCHE ET FILTRES
 # ============================================================
@@ -426,7 +450,7 @@ categories = sorted(
         for _, article in produits.iterrows()
     )
 )
-col1, col2 = st.columns([2, 1])
+col1, col2 = st.columns(2)
 with col1:
     recherche = st.text_input(
         "🔎 Rechercher un produit",
@@ -437,6 +461,7 @@ with col2:
         "🌸 Catégorie",
         ["Toutes"] + categories
     )
+
 # ============================================================
 # FILTRAGE
 # ============================================================
@@ -477,6 +502,7 @@ if categorie_selectionnee != "Toutes":
 st.write(
     f"**{len(produits_affiches)} produit(s)** trouvé(s)"
 )
+
 # ============================================================
 # AFFICHAGE DES PRODUITS
 # ============================================================
@@ -580,6 +606,7 @@ for index, article in produits_affiches.iterrows():
                     key=f"rupture_{index}",
                     disabled=True
                 )
+
 # ============================================================
 # PANIER & CONFORMITE LEGALE
 # ============================================================
@@ -593,7 +620,7 @@ else:
     for i, produit in enumerate(
         st.session_state.panier
     ):
-        col1, col2, col3, col4 = st.columns([4, 1, 1, 2])
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.write(
                 f"**{produit['produit']}**"
@@ -634,7 +661,7 @@ else:
     st.info(
         "Conformément à la réglementation, veuillez renseigner vos coordonnées pour finaliser votre demande. Aucune transaction bancaire n'est effectuée sur ce site."
     )
-    col_nom, col_vide = st.columns()
+    col_nom, col_vide = st.columns(2)
     with col_nom:
         client_id = st.text_input(
             "Nom et Prénom *",
@@ -679,6 +706,7 @@ else:
                 st.rerun()
             else:
                 st.error(message)
+
 # ============================================================
 # ESTIMATION CARBURANT
 # ============================================================
@@ -728,6 +756,7 @@ if distance > 0:
             "Coût estimé",
             f"{cout:.2f} €"
         )
+
 # ============================================================
 # FOOTER / MENTIONS LEGALES
 # ============================================================
