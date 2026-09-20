@@ -10,17 +10,6 @@ NOM_BOUTIQUE = "Mes Bons Plans de Sarah 🌸"
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing"
 STOCK_API_URL = "https://script.google.com/macros/s/AKfycbxTep4v3fevHxUE0Cv6f6SE1IRie_xCNctecO_7Ez_XXhNUQJlhc46l6mkDe-FQk7s5lA/exec"
 DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M5OsuT3FlNqt_"
-COMPTES_AUTORISES = {
-    "sarah": "shopping2026",
-    "maman": "parfaite",
-    "carole": "unique",
-    "ben": "groot",
-    "helene": "mae",
-    "laurie": "mojito",
-    "tiffany": "babysitter",
-    "lesfilles": "economies",
-    "invite": "bonplan11",
-}
 PRIX_CARBURANT = 1.80
 CONSOMMATION_L_100KM = 6.5
 # ============================================================
@@ -34,10 +23,6 @@ st.set_page_config(
 # ============================================================
 # SESSION
 # ============================================================
-if "connecte" not in st.session_state:
-    st.session_state.connecte = False
-if "utilisateur" not in st.session_state:
-    st.session_state.utilisateur = ""
 if "panier" not in st.session_state:
     st.session_state.panier = []
 if "commande_envoyee" not in st.session_state:
@@ -90,9 +75,6 @@ def convertir_nombre(valeur, valeur_defaut=0.0):
         return valeur_defaut
     texte = texte.replace("€", "")
     texte = texte.replace(" ", "")
-    # Gestion des nombres français :
-    # 12,50 -> 12.50
-    # 1 250,50 -> 1250.50
     if "," in texte and "." in texte:
         if texte.rfind(",") > texte.rfind("."):
             texte = texte.replace(".", "")
@@ -269,12 +251,10 @@ def charger_produits():
         )
     if dataframe.empty:
         return dataframe
-    # Nettoyage des noms de colonnes
     dataframe.columns = [
         str(colonne).strip()
         for colonne in dataframe.columns
     ]
-    # Supprime les lignes complètement vides
     dataframe = dataframe.dropna(
         how="all"
     ).reset_index(drop=True)
@@ -317,15 +297,10 @@ def calculer_total():
             * produit["quantite"]
         )
     return total
-def calculer_economie():
-    economie = 0.0
-    for produit in st.session_state.panier:
-        economie += 0
-    return economie
 # ============================================================
 # ENVOI COMMANDE APPS SCRIPT
 # ============================================================
-def envoyer_commande():
+def envoyer_commande(nom_utilisateur):
     if not st.session_state.panier:
         return False, "Le panier est vide."
     produits = []
@@ -338,7 +313,7 @@ def envoyer_commande():
         )
     donnees = {
         "action": "retirer_commande",
-        "utilisateur": st.session_state.utilisateur,
+        "utilisateur": nom_utilisateur,
         "produits": produits
     }
     try:
@@ -377,7 +352,7 @@ def envoyer_commande():
 # ============================================================
 # DISCORD
 # ============================================================
-def envoyer_discord():
+def envoyer_discord(nom_utilisateur):
     if not st.session_state.panier:
         return
     lignes = []
@@ -394,7 +369,7 @@ def envoyer_discord():
     total = calculer_total()
     message = (
         f"🌸 **Nouvelle commande**\n\n"
-        f"👤 Client : {st.session_state.utilisateur}\n\n"
+        f"👤 Client : {nom_utilisateur}\n\n"
         + "\n".join(lignes)
         + f"\n\n💰 **Total : {total:.2f} €**"
     )
@@ -407,47 +382,7 @@ def envoyer_discord():
     except Exception:
         pass
 # ============================================================
-# PAGE DE CONNEXION
-# ============================================================
-if not st.session_state.connecte:
-    st.title(NOM_BOUTIQUE)
-    st.markdown(
-        "### 🌸 Bienvenue dans tes bons plans !"
-    )
-    st.write(
-        "Connecte-toi pour accéder aux produits."
-    )
-    with st.form("connexion"):
-        identifiant = st.text_input(
-            "Identifiant"
-        )
-        mot_de_passe = st.text_input(
-            "Mot de passe",
-            type="password"
-        )
-        connexion = st.form_submit_button(
-            "🌸 Se connecter"
-        )
-        if connexion:
-            identifiant = identifiant.strip().lower()
-            if (
-                identifiant in COMPTES_AUTORISES
-                and COMPTES_AUTORISES[identifiant]
-                == mot_de_passe
-            ):
-                st.session_state.connecte = True
-                st.session_state.utilisateur = identifiant
-                st.success(
-                    f"Bienvenue {identifiant} 🌸"
-                )
-                st.rerun()
-            else:
-                st.error(
-                    "Identifiant ou mot de passe incorrect."
-                )
-    st.stop()
-# ============================================================
-# CHARGEMENT DES PRODUITS
+# CHARGEMENT DES PRODUITS (ACCES DIRECT)
 # ============================================================
 try:
     produits = charger_produits()
@@ -465,33 +400,22 @@ if produits.empty:
 # ============================================================
 # HEADER
 # ============================================================
-col1, col2, col3 = st.columns(
-    [4, 2, 2]
-)
+col1, col2, col3 = st.columns([4, 2, 2])
 with col1:
     st.title(NOM_BOUTIQUE)
-    st.caption(
-        f"Connecté en tant que : "
-        f"**{st.session_state.utilisateur}**"
+    st.markdown(
+        "_Votre catalogue de déstockage en accès libre._"
     )
 with col2:
     st.metric(
-        "Produits",
+        "Produits disponibles",
         len(produits)
     )
 with col3:
     st.metric(
-        "Panier",
+        "Articles dans le panier",
         len(st.session_state.panier)
     )
-# ============================================================
-# DECONNEXION
-# ============================================================
-if st.button("🚪 Se déconnecter"):
-    st.session_state.connecte = False
-    st.session_state.utilisateur = ""
-    st.session_state.panier = []
-    st.rerun()
 st.divider()
 # ============================================================
 # RECHERCHE ET FILTRES
@@ -502,9 +426,7 @@ categories = sorted(
         for _, article in produits.iterrows()
     )
 )
-col1, col2 = st.columns(
-    [2, 1]
-)
+col1, col2 = st.columns([2, 1])
 with col1:
     recherche = st.text_input(
         "🔎 Rechercher un produit",
@@ -659,7 +581,7 @@ for index, article in produits_affiches.iterrows():
                     disabled=True
                 )
 # ============================================================
-# PANIER
+# PANIER & CONFORMITE LEGALE
 # ============================================================
 st.divider()
 st.header("🛒 Mon panier")
@@ -671,9 +593,7 @@ else:
     for i, produit in enumerate(
         st.session_state.panier
     ):
-        col1, col2, col3, col4 = st.columns(
-            [4, 1, 1, 2]
-        )
+        col1, col2, col3, col4 = st.columns([4, 1, 1, 2])
         with col1:
             st.write(
                 f"**{produit['produit']}**"
@@ -708,6 +628,23 @@ else:
     st.subheader(
         f"💰 Total : {total:.2f} €"
     )
+    st.markdown(
+        "### 📝 Validation de votre demande de réservation"
+    )
+    st.info(
+        "Conformément à la réglementation, veuillez renseigner vos coordonnées pour finaliser votre demande. Aucune transaction bancaire n'est effectuée sur ce site."
+    )
+    col_nom, col_vide = st.columns()
+    with col_nom:
+        client_id = st.text_input(
+            "Nom et Prénom *",
+            key="client_identite",
+            placeholder="Ex : Marie Durant"
+        )
+    accepte_conditions = st.checkbox(
+        "En cochant cette case, j'accepte que mes données (Nom/Prénom) soient transmises pour le traitement exclusif de ma réservation et je déclare avoir pris connaissance des Mentions Légales.",
+        key="legal_check"
+    )
     col1, col2 = st.columns(2)
     with col1:
         if st.button(
@@ -716,14 +653,22 @@ else:
             vider_panier()
             st.rerun()
     with col2:
+        disabled_btn = not (
+            accepte_conditions
+            and client_id.strip() != ""
+        )
         commander = st.button(
             "✅ Valider ma commande",
-            type="primary"
+            type="primary",
+            disabled=disabled_btn
         )
         if commander:
-            succes, message = envoyer_commande()
+            nom_propre = client_id.strip()
+            succes, message = envoyer_commande(
+                nom_propre
+            )
             if succes:
-                envoyer_discord()
+                envoyer_discord(nom_propre)
                 st.session_state.panier = []
                 st.session_state.commande_envoyee = True
                 charger_produits.clear()
@@ -784,10 +729,17 @@ if distance > 0:
             f"{cout:.2f} €"
         )
 # ============================================================
-# PIED DE PAGE
+# FOOTER / MENTIONS LEGALES
 # ============================================================
 st.divider()
-st.caption(
-    "🌸 Mes Bons Plans de Sarah — "
-    "Fais tes économies facilement !"
+st.markdown(
+    """
+    <div style="background-color:#f9f9f9; padding:15px; border-radius:5px; font-size:12px; color:#555555;">
+        <p style="margin-bottom:5px;"><strong>🌸 Mentions Légales & Conformité</strong></p>
+        <p style="margin-bottom:5px;"><strong>Éditeur du site :</strong> Site géré de manière privée par Sarah (Mes Bons Plans de Sarah). Ce site ne constitue pas une boutique marchande en ligne automatisée : il s'agit d'un outil de visualisation de catalogue et de réservation de stocks physiques.</p>
+        <p style="margin-bottom:5px;"><strong>Hébergement :</strong> Ce service est hébergé de manière sécurisée par la plateforme Streamlit Cloud / GitHub.</p>
+        <p style="margin-bottom:5px;"><strong>RGPD / Protection des données :</strong> Les seules données personnelles collectées de manière éphémère sont vos Nom et Prénom au moment de la validation finale du panier. Ces informations sont transmises de manière sécurisée à notre outil interne (Discord/Google Sheets) aux seules fins de préparation et de mise à disposition de votre commande. Vous disposez d'un droit d'accès et de suppression en contactant directement l'administratrice.</p>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
