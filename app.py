@@ -33,7 +33,7 @@ if "panier" not in st.session_state:
 if "commande_envoyee" not in st.session_state:
     st.session_state.commande_envoyee = False
 if "distance_ar" not in st.session_state:
-    st.session_state.distance_ar = 50.0  # Trajet Aller-Retour Aigues-Vives ➡️ Carcassonne
+    st.session_state.distance_ar = 50.0  
 if "consommation_100" not in st.session_state:
     st.session_state.consommation_100 = CONSOMMATION_L_100KM
 if "prix_litre" not in st.session_state:
@@ -43,7 +43,6 @@ if "prix_litre" not in st.session_state:
 # FONCTIONS OUTILS ET NORMALISATION
 # ============================================================
 def normaliser_texte(texte):
-    """Normalise un texte pour faciliter la recherche de colonnes."""
     texte = str(texte)
     texte = unicodedata.normalize("NFD", texte)
     texte = "".join(
@@ -52,11 +51,11 @@ def normaliser_texte(texte):
         if unicodedata.category(caractere) != "Mn"
     )
     texte = texte.lower()
-    re_sub = re.sub(r"\s+", " ", texte).strip()
-    return re_sub
+    re_space = re.compile(r"\s+")
+    texte = re_space.sub(" ", texte).strip()
+    return texte
 
 def trouver_colonne(article, noms_possibles):
-    """Cherche une colonne dans une ligne de données ou un dictionnaire."""
     if hasattr(article, "index"):
         colonnes = list(article.index)
     elif isinstance(article, dict):
@@ -74,7 +73,6 @@ def trouver_colonne(article, noms_possibles):
     return None
 
 def convertir_nombre(valeur, valeur_defaut=0.0):
-    """Convertit proprement une valeur texte ou monétaire en nombre flottant."""
     if valeur is None or pd.isna(valeur):
         return valeur_defaut
     if isinstance(valeur, (int, float)):
@@ -182,9 +180,7 @@ def afficher_sidebar_complete():
     st.sidebar.header(f"🌸 {NOM_BOUTIQUE}")
     st.sidebar.markdown("---")
     
-    # --------------------------------------------------------
-    # VOLET 1 : GESTION DU PANIER DÉROULANT
-    # --------------------------------------------------------
+    # 1. GESTION DU PANIER DÉROULANT
     st.sidebar.subheader("🛒 Mon Espace Achat")
     nombre_articles = sum(produit["quantite"] for produit in st.session_state.panier)
     
@@ -210,7 +206,6 @@ def afficher_sidebar_complete():
                         st.rerun()
                 st.markdown("---")
             
-            # Application de la règle de livraison offerte dès 50€
             st.markdown(f"Sous-total articles : **{total_articles:.2f} €**")
             
             if total_articles >= 50.0:
@@ -225,7 +220,6 @@ def afficher_sidebar_complete():
             total_general = total_articles + frais_livraison
             st.markdown(f"### Total Général : **{total_general:.2f} €**")
             
-            # Coordonnées du client
             st.markdown("#### 📝 Informations de commande")
             nom_client = st.text_input("Votre Nom et Prénom", key="client_nom")
             adresse_livraison = st.text_area("Adresse (Aigues-Vives ou environs)", key="client_adresse")
@@ -240,9 +234,7 @@ def afficher_sidebar_complete():
 
     st.sidebar.markdown("---")
 
-    # --------------------------------------------------------
-    # VOLET 2 : CALCULATEUR CARBURANT PERSISTANT (EN MÉMOIRE)
-    # --------------------------------------------------------
+    # 2. CALCULATEUR CARBURANT PERSISTANT (EN MÉMOIRE)
     st.sidebar.subheader("⛽ Calculateur Carburant")
     
     with st.sidebar.expander("📊 Estimation Économie Trajet A/R", expanded=False):
@@ -264,7 +256,6 @@ def afficher_sidebar_complete():
             step=0.01
         )
         
-        # Calcul mathématique basé sur le trajet Aller-Retour direct
         litres_trajet = (st.session_state.distance_ar * st.session_state.consommation_100) / 100
         cout_carburant_trajet = litres_trajet * st.session_state.prix_litre
         cout_mensuel_22j = cout_carburant_trajet * 22
@@ -277,18 +268,60 @@ def afficher_sidebar_complete():
 # ============================================================
 # AFFICHAGE DE LA BOUTIQUE ET DU CATALOGUE PRINCIPAL
 # ============================================================
-# Rendu de la barre latérale gauche (panier + carburant)
 afficher_sidebar_complete()
 
-# Chargement et affichage des produits au centre
 st.title(f"🏪 Bienvenue chez {NOM_BOUTIQUE}")
+
 try:
     df_produits = charger_produits()
     if df_produits.empty:
         st.warning("Aucun produit trouvé dans la base de données Google Sheets.")
     else:
-        st.write(f"Catalogue synchronisé en direct : {len(df_produits)} articles disponibles.")
+        categories_disponibles = ["Tous"] + sorted(list(df_produits.apply(categorie_produit, axis=1).unique()))
+        categorie_selectionnee = st.selectbox("📁 Filtrer par rayon / catégorie :", categories_disponibles)
+        
+        if categorie_selectionnee != "Tous":
+            df_filtre = df_produits[df_produits.apply(categorie_produit, axis=1) == categorie_selectionnee]
+        else:
+            df_filtre = df_produits
+
+        st.write(f"Catalogue synchronisé en direct : {len(df_filtre)} articles disponibles.")
+        st.markdown("---")
+        
+        colonnes_grille = st.columns(4)
+        
+        for index, row in df_filtre.reset_index().iterrows():
+            colonne_cible = colonnes_grille[index % 4]
+            
+            with colonne_cible:
+                lien_photo = photo_produit(row)
+                if lien_photo:
+                    st.image(lien_photo, use_container_width=True)
+                else:
+                    st.image("https://via.placeholder.com/150?text=Pas+de+photo", use_container_width=True)
+                
+                st.markdown(f"**{nom_produit(row)}**")
+                st.caption(f"Format : {format_produit(row)} | {prix_kg_litre(row)}")
+                
+                prix_init = obtenir_prix(row)
+                prix_pr = Petersen = obtenir_prix_promo(row)
+                stock_dispo = obtenir_stock(row)
+                
+                if prix_pr:
+                    st.markdown(f"~~{prix_init:.2f} €~~ 🔴 **PROMO : {prix_pr:.2f} €**")
+                else:
+                    st.markdown(f"Prix : **{prix_init:.2f} €**")
+                
+                if stock_dispo <= 0:
+                    st.error("🚫 Rupture de stock")
+                else:
+                    st.caption(f"Stock disponible : {stock_dispo}")
+                    if st.button(f"➕ Ajouter", key=f"add_{index}", use_container_width=True):
+                        ajouter_au_panier(row)
+                        st.toast(f"Ajouté : {nom_produit(row)}")
+                        st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+                
 except Exception as e:
     st.error(f"Erreur d'initialisation de la base produit : {e}")
-
 
