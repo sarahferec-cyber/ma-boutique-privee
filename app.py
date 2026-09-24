@@ -1,4 +1,3 @@
-2. Code Source Python
 import streamlit as st
 import pandas as pd
 import requests
