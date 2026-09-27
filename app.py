@@ -48,7 +48,7 @@ STOCK_API_URL = (
 
 # Dans Streamlit > Settings > Secrets, ajouter :
 
-# DISCORD_WEBHOOK = "https://discord.com/api/webhooks/...."
+# DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M5OsuT3FlNqt_"
 
 DISCORD_WEBHOOK = st.secrets.get("DISCORD_WEBHOOK", "")
 
