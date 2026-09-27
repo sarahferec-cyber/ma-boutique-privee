@@ -1,4 +1,4 @@
-import streamlit as st
+
 import pandas as pd
 import requests
 import re
@@ -324,4 +324,3 @@ try:
                 
 except Exception as e:
     st.error(f"Erreur d'initialisation de la base produit : {e}")
-
