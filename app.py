@@ -1306,6 +1306,14 @@ try:
 
  
 
+        # ========================================================
+        # RECHERCHE PRODUITS
+        # ========================================================
+        recherche = st.text_input(
+            "🔎 Rechercher un produit :",
+            placeholder="Ex. lessive, Xtra, shampoing..."
+        )
+
         categorie_selectionnee = st.selectbox(
 
             "📁 Filtrer par rayon / catégorie :",
@@ -1337,6 +1345,25 @@ try:
             df_filtre = df_produits
 
  
+
+        # Applique la recherche au catalogue déjà filtré par catégorie.
+        # Recherche dans le nom, la catégorie et le format.
+        if recherche.strip():
+            recherche_normalisee = normaliser_texte(recherche)
+
+            df_filtre = df_filtre[
+                df_filtre.apply(
+                    lambda article: (
+                        recherche_normalisee in normaliser_texte(nom_produit(article))
+                        or recherche_normalisee in normaliser_texte(categorie_produit(article))
+                        or recherche_normalisee in normaliser_texte(format_produit(article))
+                    ),
+                    axis=1
+                )
+            ]
+
+        if recherche.strip() and df_filtre.empty:
+            st.info("🔎 Aucun produit ne correspond à votre recherche.")
 
         st.write(
 
