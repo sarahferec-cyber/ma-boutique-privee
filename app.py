@@ -54,10 +54,7 @@ DISCORD_WEBHOOK = st.secrets.get("DISCORD_WEBHOOK", "")
 
  
 
-PRIX_CARBURANT = 2.30
-
-
-SEUIL_LIVRAISON_OFFERTE = 50.0
+PRIX_CARBURANT = 1.80
 
  
 
@@ -222,12 +219,6 @@ if "commande_envoyee" not in st.session_state:
 if "distance_ar" not in st.session_state:
 
     st.session_state.distance_ar = 50.0
-
- 
-
-if "consommation_100" not in st.session_state:
-
-    st.session_state.consommation_100 = CONSOMMATION_L_100KM
 
  
 
@@ -761,8 +752,6 @@ def envoyer_commande_discord(
 
     total_articles,
 
-    frais_livraison,
-
     total_general
 
 ):
@@ -811,11 +800,7 @@ def envoyer_commande_discord(
 
         + "\n\n"
 
-        f"💰 Sous-total : **{total_articles:.2f} €**\n"
-
-        f"🚚 Livraison : **{frais_livraison:.2f} €**\n"
-
-        f"💳 TOTAL : **{total_general:.2f} €**"
+        f"💰 TOTAL : **{total_general:.2f} €**"
 
     )
 
@@ -1016,63 +1001,11 @@ def afficher_sidebar_complete():
 
  
 
-            if total_articles >= SEUIL_LIVRAISON_OFFERTE:
-
-                frais_livraison = 0.0
-
-                st.success(
-
-                    "🎉 Livraison offerte ! "
-
-                    "(Panier ≥ 50€)"
-
-                )
-
-            else:
-
-                frais_livraison = FRAIS_LIVRAISON_BASE
-
-                manque_pour_gratuite = (
-
-                    SEUIL_LIVRAISON_OFFERTE
-
-                    - total_articles
-
-                )
-
- 
-
-                st.warning(
-
-                    f"💡 Ajoutez **{manque_pour_gratuite:.2f} €** "
-
-                    "pour débloquer la livraison gratuite."
-
-                )
-
- 
-
-                st.markdown(
-
-                    f"Frais de livraison : "
-
-                    f"{frais_livraison:.2f} €"
-
-                )
-
- 
-
-            total_general = (
-
-                total_articles + frais_livraison
-
-            )
-
- 
+            total_general = total_articles
 
             st.markdown(
 
-                f"### Total Général : "
+                f"### Total : "
 
                 f"**{total_general:.2f} €**"
 
@@ -1163,8 +1096,6 @@ def afficher_sidebar_complete():
                             panier_commande,
 
                             total_articles,
-
-                            frais_livraison,
 
                             total_general
 
@@ -1274,17 +1205,15 @@ def afficher_sidebar_complete():
 
     # ========================================================
 
-    # CALCULATEUR CARBURANT
+    # INFORMATIONS CARBURANT
 
     # ========================================================
 
-    st.sidebar.subheader("⛽ Calculateur Carburant")
-
- 
+    st.sidebar.subheader("⛽ Carburant")
 
     with st.sidebar.expander(
 
-        "📊 Estimation Économie Trajet A/R",
+        "📊 Kilomètres et prix de l'essence",
 
         expanded=False
 
@@ -1298,8 +1227,6 @@ def afficher_sidebar_complete():
 
         )
 
- 
-
         st.session_state.distance_ar = st.number_input(
 
             "Distance Aller-Retour (km)",
@@ -1309,24 +1236,6 @@ def afficher_sidebar_complete():
             step=1.0
 
         )
-
- 
-
-        st.session_state.consommation_100 = (
-
-            st.number_input(
-
-                "Consommation moyenne (L/100km)",
-
-                value=st.session_state.consommation_100,
-
-                step=0.1
-
-            )
-
-        )
-
- 
 
         st.session_state.prix_litre = st.number_input(
 
@@ -1338,71 +1247,6 @@ def afficher_sidebar_complete():
 
         )
 
- 
-
-        litres_trajet = (
-
-            st.session_state.distance_ar
-
-            * st.session_state.consommation_100
-
-        ) / 100
-
- 
-
-        cout_carburant_trajet = (
-
-            litres_trajet
-
-            * st.session_state.prix_litre
-
-        )
-
- 
-
-        cout_mensuel_22j = (
-
-            cout_carburant_trajet * 22
-
-        )
-
- 
-
-        st.markdown("---")
-
- 
-
-        st.markdown(
-
-            f"Coût par trajet A/R : "
-
-            f"**{cout_carburant_trajet:.2f} €**"
-
-        )
-
- 
-
-        st.markdown(
-
-            f"Économie mensuelle (22j) : "
-
-            f"**{cout_mensuel_22j:.2f} €**"
-
-        )
-
- 
-
-        st.caption(
-
-            "💡 Trésorerie préservée dès l'arrêt "
-
-            "définitif des navettes vers Carcassonne."
-
-        )
-
- 
-
- 
 
 # ============================================================
 
