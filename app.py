@@ -869,119 +869,38 @@ def envoyer_commande_discord(
 # ============================================================
 
 def retirer_stock_commande(panier):
-
-    """
-
-    Envoie chaque produit commandé à ton Google Apps Script.
-
- 
-
-    Format envoyé :
-
-    {
-
-        "action": "retirer_stock",
-
-        "produit": "Nom du produit",
-
-        "quantite": 2
-
+    payload = {
+        "action": "retirer_commande",
+        "produits": [
+            {
+                "produit": produit["produit"],
+                "quantite": produit["quantite"]
+            }
+            for produit in panier
+        ]
     }
 
- 
+    try:
+        reponse = requests.post(
+            STOCK_API_URL,
+            json=payload,
+            timeout=15
+        )
 
-    Ton Apps Script doit accepter ce format.
+        resultat = reponse.json()
 
-    """
+        if resultat.get("success") is True:
+            return True, []
 
-    erreurs = []
-
- 
-
-    for produit in panier:
-
-        payload = {
-
-            "action": "retirer_stock",
-
-            "produit": produit["produit"],
-
-            "quantite": produit["quantite"]
-
-        }
-
- 
-
-        try:
-
-            reponse = requests.post(
-
-                STOCK_API_URL,
-
-                json=payload,
-
-                timeout=15
-
+        return False, [
+            resultat.get(
+                "message",
+                "Erreur inconnue lors du retrait du stock."
             )
+        ]
 
- 
-
-            if reponse.status_code not in (200, 201, 204):
-
-                erreurs.append(
-
-                    f"{produit['produit']} "
-
-                    f"(HTTP {reponse.status_code})"
-
-                )
-
-                continue
-
- 
-
-            # Si l'API renvoie du JSON avec success=false,
-
-            # on considère également l'opération comme échouée.
-
-            try:
-
-                resultat = reponse.json()
-
-                if isinstance(resultat, dict):
-
-                    if resultat.get("success") is False:
-
-                        erreurs.append(
-
-                            f"{produit['produit']} "
-
-                            f"({resultat.get('message', 'erreur API')})"
-
-                        )
-
-            except Exception:
-
-                pass
-
- 
-
-        except Exception as erreur:
-
-            erreurs.append(
-
-                f"{produit['produit']} ({erreur})"
-
-            )
-
- 
-
-    return len(erreurs) == 0, erreurs
-
- 
-
- 
-
+    except Exception as erreur:
+        return False, [str(erreur)]
 # ============================================================
 
 # RENDU DU MENU LATÉRAL GAUCHE
