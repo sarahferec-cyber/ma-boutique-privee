@@ -50,7 +50,7 @@ STOCK_API_URL = (
 
 # DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M5OsuT3FlNqt_"
 
-DISCORD_WEBHOOK = st.secrets.get("DISCORD_WEBHOOK", "")
+DISCORD_WEBHOOK = st.secrets.get(https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M5OsuT3FlNqt_)
 
  
 
