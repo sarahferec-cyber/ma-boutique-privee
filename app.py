@@ -1,7 +1,4 @@
-Mes Bons Plans de Sarah — code à copier
-Copiez uniquement le code à partir de « import streamlit as st » dans votre fichier app.py. Aucun numéro de ligne n’est ajouté.
-Pour éviter les erreurs, le fichier .py joint peut aussi être utilisé directement.
- 
+
 import streamlit as st
  
 import pandas as pd
