@@ -1,3 +1,5 @@
+Mes Bons Plans de Sarah — code corrigé
+Correction de l’erreur StreamlitWidgetAlreadyInstantiatedError. Copiez le code en conservant exactement les indentations. Pour GitHub, privilégiez le fichier .py joint.
  
 import streamlit as st
  
@@ -56,7 +58,8 @@ STOCK_API_URL = (
  
 # Dans Streamlit > Settings > Secrets, ajouter :
  
-# DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M"
+# DISCORD_WEBHOOK = " https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M
+"
  
 DISCORD_WEBHOOK = st.secrets.get("DISCORD_WEBHOOK", "")
  
@@ -1398,6 +1401,9 @@ if st.session_state.confirmation_commande:
  
  
  
+def ouvrir_boutique():
+    st.session_state["navigation_boutique"] = "🛍️ Boutique"
+ 
 # Navigation principale — la liste de souhaits n'encombre plus l'accueil.
 page = st.radio(
     "Navigation",
@@ -1428,9 +1434,7 @@ if page == '🏠 Accueil':
  
     st.markdown("### 🛍️ Vos produits à petits prix")
     st.caption("Parcourez la boutique, ajoutez vos articles au panier, puis choisissez votre créneau et votre lieu de rendez-vous.")
-    if st.button("Découvrir les produits 🌸", width="stretch"):
-        st.session_state.navigation_boutique = "🛍️ Boutique"
-        st.rerun()
+    st.button("Découvrir les produits 🌸", width="stretch", on_click=ouvrir_boutique)
 elif page == "💝 Liste de souhaits":
     st.title("💝 Votre liste de souhaits")
     with st.expander("📝 Ma liste de courses ♡ — demander la recherche de produits", expanded=False):
