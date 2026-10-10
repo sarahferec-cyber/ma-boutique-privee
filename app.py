@@ -1,4 +1,6 @@
-
+Mes Bons Plans de Sarah
+Code Python de la nouvelle version — copie intégrale du fichier .py. Pour la mise en ligne, privilégier le fichier Python afin de conserver les indentations.
+ 
 import streamlit as st
  
 import pandas as pd
@@ -56,7 +58,7 @@ STOCK_API_URL = (
  
 # Dans Streamlit > Settings > Secrets, ajouter :
  
-# DISCORD_WEBHOOK = " https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M"
+# DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M"
  
 DISCORD_WEBHOOK = st.secrets.get("DISCORD_WEBHOOK", "")
  
@@ -65,7 +67,7 @@ DISCORD_WEBHOOK = st.secrets.get("DISCORD_WEBHOOK", "")
 # ATTENTION : pour Streamlit Community Cloud, un fichier SQLite local peut être perdu
 # lors d'un redémarrage. Utiliser un stockage persistant avant ouverture publique.
 DB_PATH = st.secrets.get("DB_PATH", "sarah_boutique.sqlite3")
-ADMIN_PASSWORD_HASH = st.secrets.get("ADMIN_PASSWORD_SHA256", "")
+ADMIN_PASSWORD_HASH = st.secrets.get("ADMIN_PASSWORD_SHA256", "").strip().lower()
  
  
  
@@ -949,9 +951,14 @@ def db_conn():
  
 def initialiser_db():
     with db_conn() as db:
-        db.execute("CREATE TABLE IF NOT EXISTS creneaux (id INTEGER PRIMARY KEY AUTOINCREMENT, jour TEXT NOT NULL, debut TEXT NOT NULL, fin TEXT NOT NULL, capacite INTEGER NOT NULL DEFAULT 2, actif INTEGER NOT NULL DEFAULT 1, UNIQUE(jour,debut,fin))")
+        db.execute("CREATE TABLE IF NOT EXISTS creneaux (id INTEGER PRIMARY KEY AUTOINCREMENT, jour TEXT NOT NULL, debut TEXT NOT NULL, fin TEXT NOT NULL, capacite INTEGER NOT NULL DEFAULT 3, actif INTEGER NOT NULL DEFAULT 1, UNIQUE(jour,debut,fin))")
         db.execute("CREATE TABLE IF NOT EXISTS commandes (id TEXT PRIMARY KEY, cree_le TEXT NOT NULL, nom TEXT NOT NULL, telephone TEXT NOT NULL, email TEXT, adresse TEXT NOT NULL, creneau_id INTEGER NOT NULL, panier_json TEXT NOT NULL, total_prevu REAL NOT NULL, montant_encaisse REAL, statut TEXT NOT NULL DEFAULT 'réservée', premiere_commande INTEGER NOT NULL DEFAULT 0, FOREIGN KEY(creneau_id) REFERENCES creneaux(id))")
         db.execute("CREATE TABLE IF NOT EXISTS lignes_livrees (commande_id TEXT, produit TEXT, quantite_gardee INTEGER, PRIMARY KEY(commande_id,produit))")
+        colonnes = {r[1] for r in db.execute("PRAGMA table_info(commandes)").fetchall()}
+        if "mode_remise" not in colonnes:
+            db.execute("ALTER TABLE commandes ADD COLUMN mode_remise TEXT DEFAULT 'Livraison à domicile'")
+        if "precision_lieu" not in colonnes:
+            db.execute("ALTER TABLE commandes ADD COLUMN precision_lieu TEXT DEFAULT ''")
  
  
 def places_disponibles():
@@ -973,8 +980,8 @@ def reserver_commande(commande):
           FROM creneaux c WHERE c.id=?""", (commande['creneau_id'],)).fetchone()
         if not c or not c['actif'] or c['jour'] < date.today().isoformat() or c['reservees'] >= c['capacite']:
             return False, 'Ce créneau vient de devenir indisponible.'
-        db.execute("""INSERT INTO commandes (id,cree_le,nom,telephone,email,adresse,creneau_id,panier_json,total_prevu,premiere_commande)
-          VALUES (?,?,?,?,?,?,?,?,?,?)""", (commande['id'],datetime.now().isoformat(timespec='seconds'),commande['nom'],commande['telephone'],commande['email'],commande['adresse'],commande['creneau_id'],json.dumps(commande['panier'],ensure_ascii=False),commande['total'],int(commande['premiere_commande'])))
+        db.execute("""INSERT INTO commandes (id,cree_le,nom,telephone,email,adresse,creneau_id,panier_json,total_prevu,premiere_commande,mode_remise,precision_lieu)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""", (commande['id'],datetime.now().isoformat(timespec='seconds'),commande['nom'],commande['telephone'],commande['email'],commande['adresse'],commande['creneau_id'],json.dumps(commande['panier'],ensure_ascii=False),commande['total'],int(commande['premiere_commande']),commande['mode_remise'],commande['precision_lieu']))
     return True, ''
  
  
@@ -993,7 +1000,7 @@ def envoyer_email_confirmation(commande, texte_creneau):
         msg['From'] = st.secrets['SMTP_FROM']
         msg['To'] = commande['email']
         lignes = '\n'.join(f"{p['produit']} x{p['quantite']} : {p['prix']*p['quantite']:.2f} €" for p in commande['panier'])
-        msg.set_content(f"Bonjour {commande['nom']},\n\nCommande {commande['id']}\nCréneau : {texte_creneau}\n\n{lignes}\n\nTotal prévisionnel : {commande['total']:.2f} €\nAucun paiement à l'avance. Vous pouvez vérifier et refuser des articles à la remise ; vous ne payez que ceux gardés.\nLa livraison et les éventuels frais restent à confirmer par Sarah.\nMerci !")
+        msg.set_content(f"Bonjour {commande['nom']},\n\nCommande {commande['id']}\nCréneau demandé : {texte_creneau}\nLieu : {commande['mode_remise']} — {commande['adresse']} ({commande['precision_lieu']})\nLieu et horaire à confirmer par Sarah.\n\n{lignes}\n\nTotal prévisionnel : {commande['total']:.2f} €\nAucun paiement à l'avance. Vous pouvez vérifier et refuser des articles à la remise ; vous ne payez que ceux gardés.\nLa livraison et les éventuels frais restent à confirmer par Sarah.\nMerci !")
         with smtplib.SMTP(st.secrets['SMTP_HOST'],int(st.secrets.get('SMTP_PORT',587)),timeout=15) as smtp:
             smtp.starttls()
             smtp.login(st.secrets['SMTP_USER'],st.secrets['SMTP_PASSWORD'])
@@ -1078,7 +1085,9 @@ def afficher_admin():
             for c in commandes:
                 with st.expander(f"{c['id']} · {c['nom']} · {c['jour']} {c['debut']} · {c['statut']}"):
                     st.write(f"Téléphone : {c['telephone']} | E-mail : {c['email'] or 'non fourni'}")
-                    st.write(f"Adresse : {c['adresse']}")
+                    st.write(f"Mode de remise : {c['mode_remise']} · Lieu : {c['adresse']}")
+                    if c['precision_lieu']:
+                        st.write(f"Précisions : {c['precision_lieu']}")
                     st.write(f"Total prévu : {c['total_prevu']:.2f} €")
                     lignes=json.loads(c['panier_json'])
                     if c['statut']=='réservée':
@@ -1223,9 +1232,14 @@ def afficher_sidebar_complete():
  
  
  
+            mode_remise = st.radio(
+                "📍 Comment souhaitez-vous récupérer votre commande ?",
+                ["Point de rendez-vous", "Livraison à domicile"],
+                key="mode_remise_client"
+            )
             adresse_livraison = st.text_area(
  
-                "Adresse (Aigues-Vives ou environs)",
+                "Lieu de rendez-vous proposé (commune et endroit précis)" if mode_remise == "Point de rendez-vous" else "Adresse complète de livraison",
  
                 key="client_adresse"
  
@@ -1233,6 +1247,8 @@ def afficher_sidebar_complete():
  
  
  
+            precision_lieu = st.text_input('Précisions pour se retrouver (facultatif)', key='precision_lieu_client')
+            st.caption('Le lieu et le créneau seront confirmés par Sarah avant le rendez-vous.')
             telephone_client = st.text_input('Téléphone pour organiser la livraison *', key='client_tel')
             email_client = st.text_input('E-mail (pour recevoir votre confirmation)', key='client_email')
             disponibles = [c for c in places_disponibles() if c['reservees'] < c['capacite']]
@@ -1252,7 +1268,7 @@ def afficher_sidebar_complete():
                 st.error("Commande déjà transmise à la boutique, mais problème de stock. Contactez la boutique avant toute nouvelle tentative pour éviter un doublon.")
             if st.button(
                 "🚀 Valider ma commande",
-                use_container_width=True,
+                width="stretch",
                 disabled=st.session_state.commande_stock_en_erreur
             ):
  
@@ -1308,6 +1324,7 @@ def afficher_sidebar_complete():
                         ref=secrets.token_hex(6).upper()
                         commande={'id':ref,'nom':nom_client.strip(),'telephone':telephone_client.strip(),
                           'email':email_client.strip(),'adresse':adresse_livraison.strip(),
+                          'mode_remise':mode_remise,'precision_lieu':precision_lieu.strip(),
                           'creneau_id':choix[creneau_choisi]['id'],'panier':panier_commande,
                           'total':total_general,'premiere_commande':premiere_commande}
                         reserve,erreur=reserver_commande(commande)
@@ -1315,7 +1332,7 @@ def afficher_sidebar_complete():
                             st.error(erreur)
                         else:
                             discord_ok,discord_erreur=envoyer_commande_discord(
-                              commande['nom'],commande['adresse'],panier_commande,total_general,
+                              commande['nom'],f"{commande['mode_remise']} — {commande['adresse']} — {commande['precision_lieu']}",panier_commande,total_general,
                               total_general,premiere_commande,telephone_client,email_client,
                               creneau_choisi,ref)
                             if not discord_ok:
@@ -1334,7 +1351,8 @@ def afficher_sidebar_complete():
                                       'nombre':sum(p['quantite'] for p in panier_commande),
                                       'total':total_general,'livraison_demandee':premiere_commande,
                                       'reference':ref,'creneau':creneau_choisi,'email_ok':email_ok,
-                                      'email_demande':bool(email_client.strip())}
+                                      'email_demande':bool(email_client.strip()),
+                                      'lieu':commande['adresse'],'mode_remise':mode_remise}
                                     st.session_state.animation_confirmation=True
                                     vider_panier()
                                     st.cache_data.clear()
@@ -1365,12 +1383,12 @@ if st.session_state.confirmation_commande:
     </div>
     """, unsafe_allow_html=True)
     st.success(f"✅ Confirmation : {recap['nombre']} article(s) — Total : {recap['total']:.2f} €")
-    st.info(f"📅 Créneau réservé : {recap.get('creneau','—')} · Référence : {recap.get('reference','—')}")
+    st.info(f"📅 Créneau demandé : {recap.get('creneau','—')} · 📍 {recap.get('mode_remise','')} : {recap.get('lieu','')} · Référence : {recap.get('reference','—')}")
     if recap.get('email_demande'):
         st.info('💌 E-mail de confirmation envoyé.' if recap.get('email_ok') else '💌 Envoi de l’e-mail indisponible. Conservez cette référence de commande.')
     if recap.get("livraison_demandee"):
         st.info("🎁 Votre demande de livraison offerte a été transmise. Sarah vérifiera votre éligibilité et vous confirmera les modalités.")
-    st.info("La boutique a reçu votre demande. La disponibilité finale et les modalités de remise seront confirmées par la boutique.")
+    st.info("La boutique a reçu votre demande. Sarah confirmera le lieu et le créneau avant le rendez-vous.")
     if st.session_state.animation_confirmation:
         st.balloons()
         st.session_state.animation_confirmation = False
@@ -1382,71 +1400,145 @@ if st.session_state.confirmation_commande:
  
  
  
-st.markdown("""
-<div style="background:linear-gradient(115deg,#EFD9E1 0%,#FAF0F2 65%,#FFF9F7 100%);border:1px solid #E7CBD6;border-radius:25px;padding:35px 30px;margin-bottom:22px;box-shadow:0 8px 26px rgba(102,55,77,.06)">
-  <div style="font-size:12px;letter-spacing:2.2px;color:#935D73;font-weight:700">✿ LA BOUTIQUE DES PETITS PRIX ✿</div>
-  <div style="font-family:Georgia,serif;font-size:clamp(29px,3.5vw,49px);line-height:1.15;color:#66374D;margin:12px 0">Mes Bons Plans de Sarah 🌸</div>
-  <div style="color:#805468;font-size:17px;margin-bottom:12px">Vos marques préférées à prix doux ♡</div>
-  <div style="color:#6B5260;font-size:14px">Lessive · Entretien · Hygiène · Promotions</div>
-</div>
-""", unsafe_allow_html=True)
+# Navigation principale — la liste de souhaits n'encombre plus l'accueil.
+page = st.radio(
+    "Navigation",
+    ["🏠 Accueil", "🛍️ Boutique", "💝 Liste de souhaits", "🚚 Livraisons", "🔐 Administration"],
+    horizontal=True,
+    label_visibility="collapsed",
+    key="navigation_boutique",
+)
  
-st.markdown("""
-<div style="background:#EEDBE3;border:1px solid #DFC2CE;border-radius:22px;padding:24px;margin:16px 0;color:#713C50;text-align:center">
-<div style="font-size:28px">🎁 🌸</div>
-<div style="font-size:24px;font-weight:750">Livraison offerte pour votre première commande !</div>
-<div style="font-size:14px;margin-top:8px">Cochez « Première commande » dans votre panier pour demander votre avantage ♡</div>
-<div style="font-size:12px;margin-top:8px">Sous réserve de vérification et de zone de livraison desservie. Frais éventuels confirmés avant livraison.</div>
-</div>
-""", unsafe_allow_html=True)
-afficher_planning_public()
-afficher_admin()
-st.markdown('**🌸 Entreprise indépendante immatriculée en France.** Commandez sans payer à l’avance ; vérifiez les produits à la remise. Retrouvez les informations légales et les conditions de vente dans la rubrique dédiée à compléter avant publication.')
-with st.expander("📝 Ma liste de courses ♡ — demander la recherche de produits", expanded=False):
-    st.write("Vous cherchez un article absent du catalogue ? Envoyez votre liste. Sarah recherchera les produits et vous répondra avec les prix et disponibilités, sans obligation d'achat.")
-    with st.form("form_liste_courses", clear_on_submit=True):
-        nom_recherche = st.text_input("Votre prénom et nom", max_chars=100)
-        contact_recherche = st.text_input("Votre téléphone ou e-mail pour recevoir une réponse", max_chars=150)
-        liste_recherche = st.text_area("Produits recherchés (marque, format, quantité si possible)", placeholder="Ex. Ariel 40 lavages, shampoing Garnier...", max_chars=1100)
-        accord_contact = st.checkbox("J'accepte que mes coordonnées soient utilisées pour répondre à ma demande.")
-        soumettre_recherche = st.form_submit_button("💌 Envoyer ma liste à Sarah", use_container_width=True)
-    if soumettre_recherche:
-        if not (nom_recherche.strip() and contact_recherche.strip() and liste_recherche.strip() and accord_contact):
-            st.warning("Complétez votre nom, un moyen de contact, votre liste et l'autorisation de réponse.")
-        else:
-            ok, erreur = envoyer_liste_courses(nom_recherche.strip(), contact_recherche.strip(), liste_recherche.strip())
-            if ok:
-                st.success("🌸 Votre liste a bien été envoyée à Sarah ! Ce n'est pas une commande.")
+if page == '🏠 Accueil':
+    st.markdown("""
+    <div style="background:linear-gradient(115deg,#EFD9E1 0%,#FAF0F2 65%,#FFF9F7 100%);border:1px solid #E7CBD6;border-radius:25px;padding:35px 30px;margin-bottom:22px;box-shadow:0 8px 26px rgba(102,55,77,.06)">
+      <div style="font-size:12px;letter-spacing:2.2px;color:#935D73;font-weight:700">✿ LA BOUTIQUE DES PETITS PRIX ✿</div>
+      <div style="font-family:Georgia,serif;font-size:clamp(29px,3.5vw,49px);line-height:1.15;color:#66374D;margin:12px 0">Mes Bons Plans de Sarah 🌸</div>
+      <div style="color:#805468;font-size:17px;margin-bottom:12px">Vos marques préférées à prix doux ♡</div>
+      <div style="color:#6B5260;font-size:14px">Lessive · Entretien · Hygiène · Promotions</div>
+    </div>
+    """, unsafe_allow_html=True)
+ 
+    st.markdown("""
+    <div style="background:#EEDBE3;border:1px solid #DFC2CE;border-radius:22px;padding:24px;margin:16px 0;color:#713C50;text-align:center">
+    <div style="font-size:28px">🎁 🌸</div>
+    <div style="font-size:24px;font-weight:750">Livraison offerte pour votre première commande !</div>
+    <div style="font-size:14px;margin-top:8px">Cochez « Première commande » dans votre panier pour demander votre avantage ♡</div>
+    <div style="font-size:12px;margin-top:8px">Sous réserve de vérification et de zone de livraison desservie. Frais éventuels confirmés avant livraison.</div>
+    </div>
+    """, unsafe_allow_html=True)
+ 
+    st.markdown("### 🛍️ Vos produits à petits prix")
+    st.caption("Parcourez la boutique, ajoutez vos articles au panier, puis choisissez votre créneau et votre lieu de rendez-vous.")
+    if st.button("Découvrir les produits 🌸", width="stretch"):
+        st.session_state.navigation_boutique = "🛍️ Boutique"
+        st.rerun()
+elif page == "💝 Liste de souhaits":
+    st.title("💝 Votre liste de souhaits")
+    with st.expander("📝 Ma liste de courses ♡ — demander la recherche de produits", expanded=False):
+        st.write("Vous cherchez un article absent du catalogue ? Envoyez votre liste. Sarah recherchera les produits et vous répondra avec les prix et disponibilités, sans obligation d'achat.")
+        with st.form("form_liste_courses", clear_on_submit=True):
+            nom_recherche = st.text_input("Votre prénom et nom", max_chars=100)
+            contact_recherche = st.text_input("Votre téléphone ou e-mail pour recevoir une réponse", max_chars=150)
+            liste_recherche = st.text_area("Produits recherchés (marque, format, quantité si possible)", placeholder="Ex. Ariel 40 lavages, shampoing Garnier...", max_chars=1100)
+            accord_contact = st.checkbox("J'accepte que mes coordonnées soient utilisées pour répondre à ma demande.")
+            soumettre_recherche = st.form_submit_button("💌 Envoyer ma liste à Sarah", width="stretch")
+        if soumettre_recherche:
+            if not (nom_recherche.strip() and contact_recherche.strip() and liste_recherche.strip() and accord_contact):
+                st.warning("Complétez votre nom, un moyen de contact, votre liste et l'autorisation de réponse.")
             else:
-                st.error("Votre demande n'a pas pu être envoyée : " + erreur)
+                ok, erreur = envoyer_liste_courses(nom_recherche.strip(), contact_recherche.strip(), liste_recherche.strip())
+                if ok:
+                    st.success("🌸 Votre liste a bien été envoyée à Sarah ! Ce n'est pas une commande.")
+                else:
+                    st.error("Votre demande n'a pas pu être envoyée : " + erreur)
+elif page == "🚚 Livraisons":
+    afficher_planning_public()
+    st.info("Au moment de valider le panier, choisissez un créneau d'une heure et proposez un lieu de rendez-vous. Sarah confirmera le lieu et l'horaire.")
+elif page == "🔐 Administration":
+    afficher_admin()
+elif page == "🛍️ Boutique":
+    st.title("🛍️ La boutique")
  
-try:
+    try:
  
-    df_produits = charger_produits()
- 
- 
- 
-    if df_produits.empty:
- 
-        st.warning(
- 
-            "Aucun produit trouvé dans la base "
- 
-            "de données Google Sheets."
- 
-        )
- 
+        df_produits = charger_produits()
  
  
-    else:
  
-        categories_disponibles = (
+        if df_produits.empty:
  
-            ["Tous"]
+            st.warning(
  
-            + sorted(
+                "Aucun produit trouvé dans la base "
  
-                list(
+                "de données Google Sheets."
+ 
+            )
+ 
+ 
+ 
+        else:
+ 
+            categories_disponibles = (
+ 
+                ["Tous"]
+ 
+                + sorted(
+ 
+                    list(
+ 
+                        df_produits.apply(
+ 
+                            categorie_produit,
+ 
+                            axis=1
+ 
+                        ).unique()
+ 
+                    )
+ 
+                )
+ 
+            )
+ 
+ 
+ 
+            st.markdown("### ✨ Explorez nos rayons")
+            categories_visibles = [c for c in categories_disponibles if c != "Tous"][:5]
+            if "rayon_actif" not in st.session_state:
+                st.session_state.rayon_actif = "Tous"
+            if categories_visibles:
+                colonnes_rayons = st.columns(len(categories_visibles))
+                for col, categorie in zip(colonnes_rayons, categories_visibles):
+                    with col:
+                        if st.button("♡ " + str(categorie), key="rayon_" + str(categorie), width="stretch"):
+                            st.session_state.rayon_actif = categorie
+                            st.rerun()
+            st.markdown("### 🛍️ Notre sélection")
+            # ========================================================
+            # RECHERCHE PRODUITS
+            # ========================================================
+            recherche = st.text_input(
+                "🔎 Rechercher un produit :",
+                placeholder="Ex. lessive, Xtra, shampoing..."
+            )
+ 
+            categorie_selectionnee = st.selectbox(
+ 
+                "📁 Filtrer par rayon / catégorie :",
+ 
+                categories_disponibles,
+                index=categories_disponibles.index(st.session_state.rayon_actif) if st.session_state.rayon_actif in categories_disponibles else 0
+ 
+            )
+            st.session_state.rayon_actif = categorie_selectionnee
+ 
+ 
+ 
+            if categorie_selectionnee != "Tous":
+ 
+                df_filtre = df_produits[
  
                     df_produits.apply(
  
@@ -1454,251 +1546,101 @@ try:
  
                         axis=1
  
-                    ).unique()
+                    )
  
-                )
+                    == categorie_selectionnee
  
-            )
+                ]
  
-        )
+            else:
  
- 
- 
-        st.markdown("### ✨ Explorez nos rayons")
-        categories_visibles = [c for c in categories_disponibles if c != "Tous"][:5]
-        if "rayon_actif" not in st.session_state:
-            st.session_state.rayon_actif = "Tous"
-        if categories_visibles:
-            colonnes_rayons = st.columns(len(categories_visibles))
-            for col, categorie in zip(colonnes_rayons, categories_visibles):
-                with col:
-                    if st.button("♡ " + str(categorie), key="rayon_" + str(categorie), use_container_width=True):
-                        st.session_state.rayon_actif = categorie
-                        st.rerun()
-        st.markdown("### 🛍️ Notre sélection")
-        # ========================================================
-        # RECHERCHE PRODUITS
-        # ========================================================
-        recherche = st.text_input(
-            "🔎 Rechercher un produit :",
-            placeholder="Ex. lessive, Xtra, shampoing..."
-        )
- 
-        categorie_selectionnee = st.selectbox(
- 
-            "📁 Filtrer par rayon / catégorie :",
- 
-            categories_disponibles,
-            index=categories_disponibles.index(st.session_state.rayon_actif) if st.session_state.rayon_actif in categories_disponibles else 0
- 
-        )
-        st.session_state.rayon_actif = categorie_selectionnee
+                df_filtre = df_produits
  
  
  
-        if categorie_selectionnee != "Tous":
+            # Applique la recherche au catalogue déjà filtré par catégorie.
+            # Recherche dans le nom, la catégorie et le format.
+            if recherche.strip():
+                recherche_normalisee = normaliser_texte(recherche)
  
-            df_filtre = df_produits[
+                df_filtre = df_filtre[
+                    df_filtre.apply(
+                        lambda article: (
+                            recherche_normalisee in normaliser_texte(nom_produit(article))
+                            or recherche_normalisee in normaliser_texte(categorie_produit(article))
+                            or recherche_normalisee in normaliser_texte(format_produit(article))
+                        ),
+                        axis=1
+                    )
+                ]
  
-                df_produits.apply(
+            if recherche.strip() and df_filtre.empty:
+                st.info("🔎 Aucun produit ne correspond à votre recherche.")
  
-                    categorie_produit,
+            st.write(
  
-                    axis=1
+                f"Catalogue synchronisé en direct : "
  
-                )
- 
-                == categorie_selectionnee
- 
-            ]
- 
-        else:
- 
-            df_filtre = df_produits
- 
- 
- 
-        # Applique la recherche au catalogue déjà filtré par catégorie.
-        # Recherche dans le nom, la catégorie et le format.
-        if recherche.strip():
-            recherche_normalisee = normaliser_texte(recherche)
- 
-            df_filtre = df_filtre[
-                df_filtre.apply(
-                    lambda article: (
-                        recherche_normalisee in normaliser_texte(nom_produit(article))
-                        or recherche_normalisee in normaliser_texte(categorie_produit(article))
-                        or recherche_normalisee in normaliser_texte(format_produit(article))
-                    ),
-                    axis=1
-                )
-            ]
- 
-        if recherche.strip() and df_filtre.empty:
-            st.info("🔎 Aucun produit ne correspond à votre recherche.")
- 
-        st.write(
- 
-            f"Catalogue synchronisé en direct : "
- 
-            f"{len(df_filtre)} articles disponibles."
- 
-        )
- 
- 
- 
-        st.markdown("---")
- 
- 
- 
-        colonnes_grille = st.columns(3)
- 
- 
- 
-        for index, row in (
- 
-            df_filtre.reset_index(drop=True).iterrows()
- 
-        ):
- 
-            colonne_cible = (
- 
-                colonnes_grille[index % 3]
+                f"{len(df_filtre)} articles disponibles."
  
             )
  
  
  
-            with colonne_cible:
-                lien_photo = photo_produit(row)
+            st.markdown("---")
  
  
  
-                if lien_photo:
- 
-                    st.image(
- 
-                        lien_photo,
- 
-                        use_container_width=True
- 
-                    )
- 
-                else:
- 
-                    st.image(
- 
-                        "https://via.placeholder.com/"
- 
-                        "150?text=Pas+de+photo",
- 
-                        use_container_width=True
- 
-                    )
+            colonnes_grille = st.columns(3)
  
  
  
-                st.markdown(
+            for index, row in (
  
-                    f"**{nom_produit(row)}**"
+                df_filtre.reset_index(drop=True).iterrows()
+ 
+            ):
+ 
+                colonne_cible = (
+ 
+                    colonnes_grille[index % 3]
  
                 )
  
  
  
-                st.caption(
- 
-                    f"Format : {format_produit(row)} "
- 
-                    f"| {prix_kg_litre(row)}"
- 
-                )
+                with colonne_cible:
+                    lien_photo = photo_produit(row)
  
  
  
-                prix_init = obtenir_prix(row)
+                    if lien_photo:
+ 
+                        st.image(
+ 
+                            lien_photo,
+ 
+                            width="stretch"
+ 
+                        )
+ 
+                    else:
+ 
+                        st.image(
+ 
+                            "https://via.placeholder.com/"
+ 
+                            "150?text=Pas+de+photo",
+ 
+                            width="stretch"
+ 
+                        )
  
  
- 
-                # Correction de l'erreur
- 
-                # "prix_pr = Petersen = ..."
- 
-                prix_pr = obtenir_prix_promo(row)
- 
- 
- 
-                stock_dispo = obtenir_stock(row)
- 
- 
- 
-                prix_comp=prix_comparaison(row)
-                prix_vente=prix_pr if prix_pr is not None else prix_init
-                if prix_comp > prix_vente > 0:
-                    economie=prix_comp-prix_vente
-                    pct=100*economie/prix_comp
-                    st.caption(f"💚 Comparaison indicative : {economie:.2f} € de moins ({pct:.0f} %) qu'un prix constaté de {prix_comp:.2f} € — source et date à vérifier.")
-                if prix_pr is not None:
  
                     st.markdown(
  
-                        f"~~{prix_init:.2f} €~~ "
- 
-                        f"🔴 **PROMO : {prix_pr:.2f} €**"
- 
-                    )
- 
-                else:
- 
-                    st.markdown(
- 
-                        f"Prix : **{prix_init:.2f} €**"
- 
-                    )
- 
- 
- 
-                if stock_dispo <= 0:
- 
-                    st.error("🚫 Rupture de stock")
- 
- 
- 
-                else:
- 
-                    quantite_panier = 0
- 
- 
- 
-                    for produit_panier in (
- 
-                        st.session_state.panier
- 
-                    ):
- 
-                        if (
- 
-                            produit_panier["produit"]
- 
-                            == nom_produit(row)
- 
-                        ):
- 
-                            quantite_panier = (
- 
-                                produit_panier["quantite"]
- 
-                            )
- 
-                            break
- 
- 
- 
-                    stock_restant_affichable = max(
- 
-                        0,
- 
-                        stock_dispo - quantite_panier
+                        f"**{nom_produit(row)}**"
  
                     )
  
@@ -1706,66 +1648,164 @@ try:
  
                     st.caption(
  
-                        f"Stock disponible : "
+                        f"Format : {format_produit(row)} "
  
-                        f"{stock_restant_affichable}"
- 
-                    )
- 
- 
- 
-                    bouton_desactive = (
- 
-                        quantite_panier >= stock_dispo
+                        f"| {prix_kg_litre(row)}"
  
                     )
  
  
  
-                    if st.button(
- 
-                        "➕ Ajouter",
- 
-                        key=f"add_{row.name}_{index}",
- 
-                        use_container_width=True,
- 
-                        disabled=bouton_desactive
- 
-                    ):
- 
-                        ajouter_au_panier(row)
+                    prix_init = obtenir_prix(row)
  
  
  
-                        st.toast(
+                    # Correction de l'erreur
  
-                            f"Ajouté : "
+                    # "prix_pr = Petersen = ..."
  
-                            f"{nom_produit(row)}"
+                    prix_pr = obtenir_prix_promo(row)
+ 
+ 
+ 
+                    stock_dispo = obtenir_stock(row)
+ 
+ 
+ 
+                    prix_comp=prix_comparaison(row)
+                    prix_vente=prix_pr if prix_pr is not None else prix_init
+                    if prix_comp > prix_vente > 0:
+                        economie=prix_comp-prix_vente
+                        pct=100*economie/prix_comp
+                        st.caption(f"💚 Comparaison indicative : {economie:.2f} € de moins ({pct:.0f} %) qu'un prix constaté de {prix_comp:.2f} € — source et date à vérifier.")
+                    if prix_pr is not None:
+ 
+                        st.markdown(
+ 
+                            f"~~{prix_init:.2f} €~~ "
+ 
+                            f"🔴 **PROMO : {prix_pr:.2f} €**"
+ 
+                        )
+ 
+                    else:
+ 
+                        st.markdown(
+ 
+                            f"Prix : **{prix_init:.2f} €**"
  
                         )
  
  
  
-                        st.rerun()
+                    if stock_dispo <= 0:
+ 
+                        st.error("🚫 Rupture de stock")
  
  
  
-                st.markdown(
+                    else:
  
-                    "<br>",
- 
-                    unsafe_allow_html=True
- 
-                )
+                        quantite_panier = 0
  
  
  
-except Exception as e:
+                        for produit_panier in (
  
-    st.error(
+                            st.session_state.panier
  
-        f"Erreur d'initialisation de la base produit : {e}"
+                        ):
  
-    )
+                            if (
+ 
+                                produit_panier["produit"]
+ 
+                                == nom_produit(row)
+ 
+                            ):
+ 
+                                quantite_panier = (
+ 
+                                    produit_panier["quantite"]
+ 
+                                )
+ 
+                                break
+ 
+ 
+ 
+                        stock_restant_affichable = max(
+ 
+                            0,
+ 
+                            stock_dispo - quantite_panier
+ 
+                        )
+ 
+ 
+ 
+                        st.caption(
+ 
+                            f"Stock disponible : "
+ 
+                            f"{stock_restant_affichable}"
+ 
+                        )
+ 
+ 
+ 
+                        bouton_desactive = (
+ 
+                            quantite_panier >= stock_dispo
+ 
+                        )
+ 
+ 
+ 
+                        if st.button(
+ 
+                            "➕ Ajouter",
+ 
+                            key=f"add_{row.name}_{index}",
+ 
+                            width="stretch",
+ 
+                            disabled=bouton_desactive
+ 
+                        ):
+ 
+                            ajouter_au_panier(row)
+ 
+ 
+ 
+                            st.toast(
+ 
+                                f"Ajouté : "
+ 
+                                f"{nom_produit(row)}"
+ 
+                            )
+ 
+ 
+ 
+                            st.rerun()
+ 
+ 
+ 
+                    st.markdown(
+ 
+                        "<br>",
+ 
+                        unsafe_allow_html=True
+ 
+                    )
+ 
+ 
+ 
+    except Exception as e:
+ 
+        st.error(
+ 
+            f"Erreur d'initialisation de la base produit : {e}"
+ 
+        )
