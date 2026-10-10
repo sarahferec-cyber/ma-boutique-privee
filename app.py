@@ -1,6 +1,4 @@
-Mes Bons Plans de Sarah — code corrigé
-Correction de l’erreur StreamlitWidgetAlreadyInstantiatedError. Copiez le code en conservant exactement les indentations. Pour GitHub, privilégiez le fichier .py joint.
- 
+
 import streamlit as st
  
 import pandas as pd
