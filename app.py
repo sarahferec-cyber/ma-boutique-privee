@@ -1,6 +1,4 @@
-Mes Bons Plans de Sarah
-Refonte chic et féminine — code Streamlit complet
-Copiez tout le code ci-dessous dans votre fichier Python Streamlit. Sauvegardez votre ancien code et testez les commandes et le stock avant de publier.
+
 Important : le webhook Discord doit rester dans les Secrets Streamlit. La validation de commande et la mise à jour du stock nécessitent des tests réels avant utilisation.
 import streamlit as st
  
