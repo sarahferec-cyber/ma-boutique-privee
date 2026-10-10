@@ -1,4 +1,7 @@
-
+Mes Bons Plans de Sarah
+Refonte chic et féminine — code Streamlit complet
+Copiez tout le code ci-dessous dans votre fichier Python Streamlit. Sauvegardez votre ancien code et testez les commandes et le stock avant de publier.
+Important : le webhook Discord doit rester dans les Secrets Streamlit. La validation de commande et la mise à jour du stock nécessitent des tests réels avant utilisation.
 import streamlit as st
  
 import pandas as pd
@@ -79,7 +82,25 @@ st.set_page_config(
  
 # ============================================================
  
-# FONCTIONS DE PERSISTANCE DU PANIER
+st.markdown("""
+<style>
+:root {--rose:#A56880;--prune:#66374D;--fond:#F7F0F1;--card:#FFFCFB;}
+.stApp,[data-testid="stAppViewContainer"] {background:#F7F0F1;color:#453840;}
+[data-testid="stSidebar"] {background:#F0E2E7;border-right:1px solid #E4CDD6;}
+[data-testid="stHeader"] {background:rgba(247,240,241,.96);}
+[data-testid="stMainBlockContainer"] {max-width:1350px;padding-top:2rem;}
+h1,h2,h3 {color:#66374D!important;}
+[data-testid="stMarkdownContainer"] p {line-height:1.5;}
+div[data-testid="stVerticalBlockBorderWrapper"] > div[style*="border"] {background:#FFFCFB;border:1px solid #EAD9DF!important;border-radius:17px!important;box-shadow:0 5px 18px rgba(102,55,77,.07);padding:10px;}
+div.stButton > button {border-radius:12px!important;border:1px solid #D8B9C5!important;background:#FFF9FB;color:#713C50;font-weight:600;min-height:40px;}
+div.stButton > button:hover {background:#EEDBE3;color:#66374D;border-color:#A56880!important;}
+div.stButton > button[kind="primary"] {background:#A56880!important;color:white!important;border-color:#A56880!important;}
+[data-testid="stTextInput"] input {background:#FFFCFB;border-radius:11px;}
+[data-testid="stSelectbox"] div[data-baseweb="select"] > div {background:#FFFCFB;border-radius:11px;}
+[data-testid="stImage"] img {object-fit:contain;max-height:230px;}
+@media(max-width:700px){[data-testid="stMainBlockContainer"]{padding:1rem .7rem;}h1{font-size:1.7rem!important;}}
+</style>
+""", unsafe_allow_html=True)# FONCTIONS DE PERSISTANCE DU PANIER
  
 # Le panier est encodé dans le paramètre ?panier= de l'URL.
  
@@ -1242,20 +1263,14 @@ afficher_sidebar_complete()
  
  
  
-st.markdown(
-    '<div style="background:#EEDDE2;border-radius:20px;padding:25px 28px;'
-    'margin-bottom:22px;text-align:center">'
-    '<div style="font-size:13px;color:#88596A;letter-spacing:2px">'
-    '✿ LA BOUTIQUE EN LIGNE ✿</div>'
-    '<div style="font-size:clamp(24px,3vw,38px);font-weight:750;'
-    'color:#713C50;margin:8px 0">Mes Bons Plans de Sarah 🌸</div>'
-    '<div style="color:#805568">Vos marques préférées à petits prix ♡</div>'
-    '</div>', unsafe_allow_html=True
-)
-st.caption("🛍️ Sélectionnez vos produits et ajustez les quantités dans le panier.")
- 
- 
- 
+st.markdown("""
+<div style="background:linear-gradient(115deg,#EFD9E1 0%,#FAF0F2 65%,#FFF9F7 100%);border:1px solid #E7CBD6;border-radius:25px;padding:35px 30px;margin-bottom:22px;box-shadow:0 8px 26px rgba(102,55,77,.06)">
+  <div style="font-size:12px;letter-spacing:2.2px;color:#935D73;font-weight:700">✿ LA BOUTIQUE DES PETITS PRIX ✿</div>
+  <div style="font-family:Georgia,serif;font-size:clamp(29px,3.5vw,49px);line-height:1.15;color:#66374D;margin:12px 0">Mes Bons Plans de Sarah 🌸</div>
+  <div style="color:#805468;font-size:17px;margin-bottom:12px">Vos marques préférées à prix doux ♡</div>
+  <div style="color:#6B5260;font-size:14px">Lessive · Entretien · Hygiène · Promotions</div>
+</div>
+""", unsafe_allow_html=True)
  
 try:
  
@@ -1301,6 +1316,18 @@ try:
  
  
  
+        st.markdown("### ✨ Explorez nos rayons")
+        categories_visibles = [c for c in categories_disponibles if c != "Tous"][:5]
+        if "rayon_actif" not in st.session_state:
+            st.session_state.rayon_actif = "Tous"
+        if categories_visibles:
+            colonnes_rayons = st.columns(len(categories_visibles))
+            for col, categorie in zip(colonnes_rayons, categories_visibles):
+                with col:
+                    if st.button("♡ " + str(categorie), key="rayon_" + str(categorie), use_container_width=True):
+                        st.session_state.rayon_actif = categorie
+                        st.rerun()
+        st.markdown("### 🛍️ Notre sélection")
         # ========================================================
         # RECHERCHE PRODUITS
         # ========================================================
@@ -1313,9 +1340,11 @@ try:
  
             "📁 Filtrer par rayon / catégorie :",
  
-            categories_disponibles
+            categories_disponibles,
+            index=categories_disponibles.index(st.session_state.rayon_actif) if st.session_state.rayon_actif in categories_disponibles else 0
  
         )
+        st.session_state.rayon_actif = categorie_selectionnee
  
  
  
