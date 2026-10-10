@@ -1,5 +1,4 @@
-Mes Bons Plans de Sarah — Nouveautés
-Code Python complet. Les catégories séparées par une virgule sont affichées dans plusieurs rayons. Nouveauté est prioritaire et sélectionnée par défaut. Pour GitHub, privilégier le fichier .py.
+
 import streamlit as st
  
 import pandas as pd
