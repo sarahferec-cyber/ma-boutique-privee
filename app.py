@@ -1,5 +1,4 @@
 
-Important : le webhook Discord doit rester dans les Secrets Streamlit. La validation de commande et la mise à jour du stock nécessitent des tests réels avant utilisation.
 import streamlit as st
  
 import pandas as pd
