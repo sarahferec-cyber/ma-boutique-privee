@@ -1,4 +1,4 @@
-Mes Bons Plans de Sarah 🌸
+Mes Bons Plans de Sarah
 Code Streamlit — version rose poudré et panier modifiable
 Copiez l’intégralité du code ci-dessous dans votre fichier Python Streamlit. Testez la version avant de remplacer le site public. Ne partagez pas vos identifiants privés.
 import streamlit as st
