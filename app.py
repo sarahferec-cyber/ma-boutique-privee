@@ -1,5 +1,3 @@
-Mes Bons Plans de Sarah
-Code Python de la nouvelle version — copie intégrale du fichier .py. Pour la mise en ligne, privilégier le fichier Python afin de conserver les indentations.
  
 import streamlit as st
  
