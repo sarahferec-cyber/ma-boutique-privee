@@ -230,8 +230,13 @@ if "panier" not in st.session_state:
  
  
 if "commande_envoyee" not in st.session_state:
- 
     st.session_state.commande_envoyee = False
+if "confirmation_commande" not in st.session_state:
+    st.session_state.confirmation_commande = None
+if "animation_confirmation" not in st.session_state:
+    st.session_state.animation_confirmation = False
+if "commande_stock_en_erreur" not in st.session_state:
+    st.session_state.commande_stock_en_erreur = False
  
  
  
@@ -1043,12 +1048,12 @@ def afficher_sidebar_complete():
  
  
  
+            if st.session_state.commande_stock_en_erreur:
+                st.error("Commande déjà transmise à la boutique, mais problème de stock. Contactez la boutique avant toute nouvelle tentative pour éviter un doublon.")
             if st.button(
- 
                 "🚀 Valider ma commande",
- 
-                use_container_width=True
- 
+                use_container_width=True,
+                disabled=st.session_state.commande_stock_en_erreur
             ):
  
                 if (
@@ -1150,7 +1155,12 @@ def afficher_sidebar_complete():
                             # 3. Tout est bon : on vide le panier.
  
                             st.session_state.commande_envoyee = True
- 
+                            st.session_state.commande_stock_en_erreur = False
+                            st.session_state.confirmation_commande = {
+                                "nombre": sum(p["quantite"] for p in panier_commande),
+                                "total": total_general,
+                            }
+                            st.session_state.animation_confirmation = True
                             vider_panier()
  
                             st.cache_data.clear()
@@ -1165,14 +1175,12 @@ def afficher_sidebar_complete():
  
                             )
  
-                            st.balloons()
- 
                             st.rerun()
  
  
  
                         else:
- 
+                            st.session_state.commande_stock_en_erreur = True
                             st.warning(
  
                                 "La commande a bien été reçue "
@@ -1257,6 +1265,30 @@ def afficher_sidebar_complete():
 # ============================================================
  
 afficher_sidebar_complete()
+ 
+# Confirmation visible après le rechargement de la page.
+if st.session_state.confirmation_commande:
+    recap = st.session_state.confirmation_commande
+    st.markdown("""
+    <div style="background:#F2E3E9;border:2px solid #C68CA3;border-radius:22px;
+    padding:26px;text-align:center;margin:14px 0 24px 0;">
+      <div style="font-size:42px">🎉 🌸 🎉</div>
+      <div style="font-size:26px;color:#713C50;font-weight:750">Merci pour votre commande !</div>
+      <div style="font-size:16px;color:#775365;margin-top:8px">
+        Votre commande a bien été enregistrée et transmise à la boutique ♡
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.success(f"✅ Confirmation : {recap['nombre']} article(s) — Total : {recap['total']:.2f} €")
+    st.info("La boutique a reçu votre demande. La disponibilité finale et les modalités de remise seront confirmées par la boutique.")
+    if st.session_state.animation_confirmation:
+        st.balloons()
+        st.session_state.animation_confirmation = False
+    if st.button("🌸 Fermer la confirmation", key="fermer_confirmation"):
+        st.session_state.confirmation_commande = None
+        st.rerun()
+ 
+ 
  
  
  
