@@ -1,4 +1,3 @@
-
 import streamlit as st
  
 import pandas as pd
@@ -16,9 +15,14 @@ import sqlite3
 import hashlib
 import hmac
 import secrets
-import smtplib
-from email.message import EmailMessage
 from datetime import datetime, date, timedelta
+from io import BytesIO
+from xml.sax.saxutils import escape
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.pagesizes import A4
  
  
  
@@ -999,24 +1003,67 @@ def annuler_reservation(identifiant):
         db.execute("UPDATE commandes SET statut='annulée' WHERE id=? AND statut='réservée'", (identifiant,))
  
  
-def envoyer_email_confirmation(commande, texte_creneau):
-    # Optionnel : secrets SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM
-    if not commande['email'] or not st.secrets.get('SMTP_HOST',''):
-        return False
-    try:
-        msg = EmailMessage()
-        msg['Subject'] = 'Votre commande Mes Bons Plans de Sarah — ' + commande['id']
-        msg['From'] = st.secrets['SMTP_FROM']
-        msg['To'] = commande['email']
-        lignes = '\n'.join(f"{p['produit']} x{p['quantite']} : {p['prix']*p['quantite']:.2f} €" for p in commande['panier'])
-        msg.set_content(f"Bonjour {commande['nom']},\n\nCommande {commande['id']}\nCréneau demandé : {texte_creneau}\nLieu : {commande['mode_remise']} — {commande['adresse']} ({commande['precision_lieu']})\nLieu et horaire à confirmer par Sarah.\n\n{lignes}\n\nTotal prévisionnel : {commande['total']:.2f} €\nAucun paiement à l'avance. Vous pouvez vérifier et refuser des articles à la remise ; vous ne payez que ceux gardés.\nLa livraison et les éventuels frais restent à confirmer par Sarah.\nMerci !")
-        with smtplib.SMTP(st.secrets['SMTP_HOST'],int(st.secrets.get('SMTP_PORT',587)),timeout=15) as smtp:
-            smtp.starttls()
-            smtp.login(st.secrets['SMTP_USER'],st.secrets['SMTP_PASSWORD'])
-            smtp.send_message(msg)
-        return True
-    except Exception:
-        return False
+def creer_recapitulatif_pdf(commande, lignes):
+    """Produit un PDF en mémoire, accessible seulement dans l'administration."""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=40, leftMargin=40,
+                            topMargin=40, bottomMargin=40)
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="SarahTitre", parent=styles["Title"],
+                              textColor=colors.HexColor("#66374D"), fontSize=17,
+                              alignment=TA_CENTER, spaceAfter=14))
+    styles.add(ParagraphStyle(name="SarahTexte", parent=styles["Normal"],
+                              leading=15, spaceAfter=5))
+    def texte(valeur):
+        return escape(str(valeur if valeur is not None else ""))
+    elements = [Paragraph("Mes Bons Plans de Sarah", styles["SarahTitre"]),
+                Paragraph("<b>Récapitulatif de commande — non acquitté</b>", styles["Heading2"]),
+                Spacer(1, 8)]
+    champs = [
+        ("Référence", commande["id"]),
+        ("Commande du", commande["cree_le"][:16].replace("T", " ")),
+        ("Client", commande["nom"]),
+        ("Téléphone", commande["telephone"]),
+        ("E-mail", commande["email"] or "Non renseigné"),
+        ("Mode de remise", commande["mode_remise"]),
+        ("Lieu proposé", commande["adresse"]),
+        ("Précisions", commande["precision_lieu"] or "Aucune"),
+        ("Créneau demandé", f"{commande['jour']} de {commande['debut']} à {commande['fin']}"),
+        ("Statut", commande["statut"]),
+    ]
+    for label, valeur in champs:
+        elements.append(Paragraph(f"<b>{texte(label)} :</b> {texte(valeur)}", styles["SarahTexte"]))
+    elements.append(Spacer(1, 12))
+    data = [["Article", "Qté", "Prix unit.", "Total"]]
+    for item in lignes:
+        quantite = int(item["quantite"])
+        prix = float(item["prix"])
+        data.append([Paragraph(texte(item["produit"]), styles["Normal"]),
+                     str(quantite), f"{prix:.2f} €", f"{quantite * prix:.2f} €"])
+    data.append(["TOTAL PRÉVISIONNEL", "", "", f"{float(commande['total_prevu']):.2f} €"])
+    tableau = Table(data, colWidths=[265, 45, 85, 100], repeatRows=1, hAlign="LEFT")
+    tableau.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEDBE3")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#66374D")),
+        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#F7F0F1")),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("LINEBELOW", (0, 0), (-1, 0), .5, colors.HexColor("#A56880")),
+    ]))
+    elements.append(tableau)
+    elements.append(Spacer(1, 16))
+    elements.append(Paragraph(
+        "<b>Information :</b> document récapitulatif, pas une facture acquittée. "
+        "Le lieu et l'horaire sont à confirmer par Sarah. Aucun paiement à l'avance. "
+        "Le client vérifie les articles lors de la remise et paie uniquement ceux conservés. "
+        "Les éventuels frais de livraison sont à confirmer séparément.",
+        styles["SarahTexte"]))
+    doc.build(elements)
+    return buffer.getvalue()
  
  
 def prix_comparaison(article):
@@ -1099,6 +1146,13 @@ def afficher_admin():
                         st.write(f"Précisions : {c['precision_lieu']}")
                     st.write(f"Total prévu : {c['total_prevu']:.2f} €")
                     lignes=json.loads(c['panier_json'])
+                    st.download_button(
+                        "📄 Télécharger le récapitulatif PDF",
+                        data=creer_recapitulatif_pdf(c, lignes),
+                        file_name=f"Recapitulatif_commande_{c['id']}.pdf",
+                        mime="application/pdf",
+                        key=f"pdf_commande_{c['id']}",
+                    )
                     if c['statut']=='réservée':
                         with st.form('fin_'+c['id']):
                             gardees={}
@@ -1355,12 +1409,10 @@ def afficher_sidebar_complete():
                                     for erreur_stock in erreurs_stock:
                                         st.caption(str(erreur_stock))
                                 else:
-                                    email_ok=envoyer_email_confirmation(commande,creneau_choisi)
                                     st.session_state.confirmation_commande={
                                       'nombre':sum(p['quantite'] for p in panier_commande),
                                       'total':total_general,'livraison_demandee':premiere_commande,
-                                      'reference':ref,'creneau':creneau_choisi,'email_ok':email_ok,
-                                      'email_demande':bool(email_client.strip()),
+                                      'reference':ref,'creneau':creneau_choisi,
                                       'lieu':commande['adresse'],'mode_remise':mode_remise}
                                     st.session_state.animation_confirmation=True
                                     vider_panier()
@@ -1393,8 +1445,6 @@ if st.session_state.confirmation_commande:
     """, unsafe_allow_html=True)
     st.success(f"✅ Confirmation : {recap['nombre']} article(s) — Total : {recap['total']:.2f} €")
     st.info(f"📅 Créneau demandé : {recap.get('creneau','—')} · 📍 {recap.get('mode_remise','')} : {recap.get('lieu','')} · Référence : {recap.get('reference','—')}")
-    if recap.get('email_demande'):
-        st.info('💌 E-mail de confirmation envoyé.' if recap.get('email_ok') else '💌 Envoi de l’e-mail indisponible. Conservez cette référence de commande.')
     if recap.get("livraison_demandee"):
         st.info("🎁 Votre demande de livraison offerte a été transmise. Sarah vérifiera votre éligibilité et vous confirmera les modalités.")
     st.info("La boutique a reçu votre demande. Sarah confirmera le lieu et le créneau avant le rendez-vous.")
