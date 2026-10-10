@@ -1,4 +1,5 @@
-
+Mes Bons Plans de Sarah — Nouveautés
+Code Python complet. Les catégories séparées par une virgule sont affichées dans plusieurs rayons. Nouveauté est prioritaire et sélectionnée par défaut. Pour GitHub, privilégier le fichier .py.
 import streamlit as st
  
 import pandas as pd
@@ -50,14 +51,10 @@ STOCK_API_URL = (
  
 )
  
- 
- 
-# IMPORTANT :
- 
-# Dans Streamlit > Settings > Secrets, ajouter :
- 
 # DISCORD_WEBHOOK = " https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M"
  
+ 
+# Configurer DISCORD_WEBHOOK dans les Secrets Streamlit.
 DISCORD_WEBHOOK = st.secrets.get("DISCORD_WEBHOOK", "")
  
  
@@ -437,6 +434,21 @@ def categorie_produit(article):
  
  
  
+ 
+ 
+def categories_produit(article):
+    """Sépare les catégories de la feuille sans dupliquer les produits."""
+    brut = categorie_produit(article)
+    categories = []
+    for valeur in re.split(r"[,;]", brut):
+        categorie = valeur.strip()
+        if categorie and normaliser_texte(categorie) not in [normaliser_texte(c) for c in categories]:
+            categories.append(categorie)
+    return categories or ["Autre"]
+ 
+ 
+def est_dans_categorie(article, categorie):
+    return any(normaliser_texte(c) == normaliser_texte(categorie) for c in categories_produit(article))
  
  
 def photo_produit(article):
@@ -1402,6 +1414,9 @@ def ouvrir_boutique():
     st.session_state["navigation_boutique"] = "🛍️ Boutique"
  
 # Navigation principale — la liste de souhaits n'encombre plus l'accueil.
+if "navigation_boutique" not in st.session_state:
+    st.session_state.navigation_boutique = "🛍️ Boutique"
+ 
 page = st.radio(
     "Navigation",
     ["🏠 Accueil", "🛍️ Boutique", "💝 Liste de souhaits", "🚚 Livraisons", "🔐 Administration"],
@@ -1479,34 +1494,24 @@ elif page == "🛍️ Boutique":
  
         else:
  
-            categories_disponibles = (
- 
-                ["Tous"]
- 
-                + sorted(
- 
-                    list(
- 
-                        df_produits.apply(
- 
-                            categorie_produit,
- 
-                            axis=1
- 
-                        ).unique()
- 
-                    )
- 
-                )
- 
+            # Une ligne Google Sheets peut appartenir à plusieurs rayons.
+            categories_par_nom = {}
+            for _, article in df_produits.iterrows():
+                for categorie in categories_produit(article):
+                    cle = normaliser_texte(categorie)
+                    if cle not in categories_par_nom:
+                        categories_par_nom[cle] = categorie
+            autres_categories = sorted(
+                (nom for cle, nom in categories_par_nom.items() if cle not in ("nouveaute", "nouveautes")),
+                key=normaliser_texte,
             )
- 
- 
+            nouveaute = categories_par_nom.get("nouveaute") or categories_par_nom.get("nouveautes")
+            categories_disponibles = ([nouveaute] if nouveaute else []) + autres_categories + ["Tous"]
  
             st.markdown("### ✨ Explorez nos rayons")
             categories_visibles = [c for c in categories_disponibles if c != "Tous"][:5]
             if "rayon_actif" not in st.session_state:
-                st.session_state.rayon_actif = "Tous"
+                st.session_state.rayon_actif = nouveaute if nouveaute else "Tous"
             if categories_visibles:
                 colonnes_rayons = st.columns(len(categories_visibles))
                 for col, categorie in zip(colonnes_rayons, categories_visibles):
@@ -1536,26 +1541,11 @@ elif page == "🛍️ Boutique":
  
  
             if categorie_selectionnee != "Tous":
- 
                 df_filtre = df_produits[
- 
-                    df_produits.apply(
- 
-                        categorie_produit,
- 
-                        axis=1
- 
-                    )
- 
-                    == categorie_selectionnee
- 
+                    df_produits.apply(lambda article: est_dans_categorie(article, categorie_selectionnee), axis=1)
                 ]
- 
             else:
- 
                 df_filtre = df_produits
- 
- 
  
             # Applique la recherche au catalogue déjà filtré par catégorie.
             # Recherche dans le nom, la catégorie et le format.
