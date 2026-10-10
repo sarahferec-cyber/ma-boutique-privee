@@ -49,7 +49,7 @@ STOCK_API_URL = (
  
 # Dans Streamlit > Settings > Secrets, ajouter :
  
-# DISCORD_WEBHOOK = " https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M5OsuT3FlNqt_"
+# DISCORD_WEBHOOK = " https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M"
  
 DISCORD_WEBHOOK = st.secrets.get("DISCORD_WEBHOOK", "")
  
@@ -787,7 +787,8 @@ def envoyer_commande_discord(
  
     total_articles,
  
-    total_general
+    total_general,
+    premiere_commande=False
  
 ):
  
@@ -835,7 +836,8 @@ def envoyer_commande_discord(
  
         + "\n\n"
  
-        f"💰 TOTAL : **{total_general:.2f} €**"
+        f"💰 TOTAL ARTICLES : **{total_general:.2f} €**\n"
+        + ("🎁 **Livraison offerte demandée (première commande déclarée) — à vérifier manuellement**\n" if premiere_commande else "🚚 Livraison : modalités et frais à confirmer\n")
  
     )
  
@@ -884,6 +886,22 @@ def envoyer_commande_discord(
 # RETRAIT DES PRODUITS DU STOCK
  
 # ============================================================
+ 
+def envoyer_liste_courses(nom, contact, liste):
+    if not DISCORD_WEBHOOK:
+        return False, "Discord n'est pas configuré."
+    message = (
+        "📝 **NOUVELLE LISTE DE COURSES / RECHERCHE**\n"
+        f"👤 Nom : {nom}\n📞 Contact : {contact}\n"
+        f"🔎 Produits recherchés :\n{liste}\n\n"
+        "ℹ️ Recherche uniquement : aucun achat ni retrait de stock."
+    )
+    try:
+        reponse = requests.post(DISCORD_WEBHOOK, json={"content": message}, timeout=15)
+        return reponse.status_code in (200, 204), ("" if reponse.status_code in (200, 204) else f"Discord : {reponse.status_code}")
+    except requests.RequestException as erreur:
+        return False, str(erreur)
+ 
  
 def retirer_stock_commande(panier):
     payload = {
@@ -1048,6 +1066,13 @@ def afficher_sidebar_complete():
  
  
  
+            premiere_commande = st.checkbox(
+                "🎁 C'est ma première commande : je souhaite bénéficier de la livraison offerte",
+                key="premiere_commande",
+                help="Offre réservée à la première commande, sous réserve de vérification et de zone desservie."
+            )
+            st.caption("Les frais de livraison ne sont pas inclus dans le total des articles. Sarah confirmera l'éligibilité et les modalités avant la livraison.")
+ 
             if st.session_state.commande_stock_en_erreur:
                 st.error("Commande déjà transmise à la boutique, mais problème de stock. Contactez la boutique avant toute nouvelle tentative pour éviter un doublon.")
             if st.button(
@@ -1104,7 +1129,8 @@ def afficher_sidebar_complete():
  
                             total_articles,
  
-                            total_general
+                            total_general,
+                            premiere_commande
  
                         )
  
@@ -1159,6 +1185,7 @@ def afficher_sidebar_complete():
                             st.session_state.confirmation_commande = {
                                 "nombre": sum(p["quantite"] for p in panier_commande),
                                 "total": total_general,
+                                "livraison_demandee": premiere_commande,
                             }
                             st.session_state.animation_confirmation = True
                             vider_panier()
@@ -1280,6 +1307,8 @@ if st.session_state.confirmation_commande:
     </div>
     """, unsafe_allow_html=True)
     st.success(f"✅ Confirmation : {recap['nombre']} article(s) — Total : {recap['total']:.2f} €")
+    if recap.get("livraison_demandee"):
+        st.info("🎁 Votre demande de livraison offerte a été transmise. Sarah vérifiera votre éligibilité et vous confirmera les modalités.")
     st.info("La boutique a reçu votre demande. La disponibilité finale et les modalités de remise seront confirmées par la boutique.")
     if st.session_state.animation_confirmation:
         st.balloons()
@@ -1300,6 +1329,32 @@ st.markdown("""
   <div style="color:#6B5260;font-size:14px">Lessive · Entretien · Hygiène · Promotions</div>
 </div>
 """, unsafe_allow_html=True)
+ 
+st.markdown("""
+<div style="background:#EEDBE3;border:1px solid #DFC2CE;border-radius:22px;padding:24px;margin:16px 0;color:#713C50;text-align:center">
+<div style="font-size:28px">🎁 🌸</div>
+<div style="font-size:24px;font-weight:750">Livraison offerte pour votre première commande !</div>
+<div style="font-size:14px;margin-top:8px">Cochez « Première commande » dans votre panier pour demander votre avantage ♡</div>
+<div style="font-size:12px;margin-top:8px">Sous réserve de vérification et de zone de livraison desservie. Frais éventuels confirmés avant livraison.</div>
+</div>
+""", unsafe_allow_html=True)
+with st.expander("📝 Ma liste de courses ♡ — demander la recherche de produits", expanded=False):
+    st.write("Vous cherchez un article absent du catalogue ? Envoyez votre liste. Sarah recherchera les produits et vous répondra avec les prix et disponibilités, sans obligation d'achat.")
+    with st.form("form_liste_courses", clear_on_submit=True):
+        nom_recherche = st.text_input("Votre prénom et nom", max_chars=100)
+        contact_recherche = st.text_input("Votre téléphone ou e-mail pour recevoir une réponse", max_chars=150)
+        liste_recherche = st.text_area("Produits recherchés (marque, format, quantité si possible)", placeholder="Ex. Ariel 40 lavages, shampoing Garnier...", max_chars=1100)
+        accord_contact = st.checkbox("J'accepte que mes coordonnées soient utilisées pour répondre à ma demande.")
+        soumettre_recherche = st.form_submit_button("💌 Envoyer ma liste à Sarah", use_container_width=True)
+    if soumettre_recherche:
+        if not (nom_recherche.strip() and contact_recherche.strip() and liste_recherche.strip() and accord_contact):
+            st.warning("Complétez votre nom, un moyen de contact, votre liste et l'autorisation de réponse.")
+        else:
+            ok, erreur = envoyer_liste_courses(nom_recherche.strip(), contact_recherche.strip(), liste_recherche.strip())
+            if ok:
+                st.success("🌸 Votre liste a bien été envoyée à Sarah ! Ce n'est pas une commande.")
+            else:
+                st.error("Votre demande n'a pas pu être envoyée : " + erreur)
  
 try:
  
