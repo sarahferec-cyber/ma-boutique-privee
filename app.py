@@ -54,7 +54,7 @@ STOCK_API_URL = (
  
 )
  
-# DISCORD_WEBHOOK = " https://discord.com/api/webhooks/1549946850885238865/OItwwHS0spEUH0vzmBSJjAaCXwx2Yicaz2l30EolaALbmEufafnZI36M"
+# DISCORD_WEBHOOK = " https://discord.com/api/webhooks/1559204122308124672/ZNOHTnBzND7oJxXhqQjVhDVIz1VjwmBB13E12Q19ZiYOznCQl2Oezgd08OUbibz53o-n"
  
  
 # Configurer DISCORD_WEBHOOK dans les Secrets Streamlit.
