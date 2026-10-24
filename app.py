@@ -61,6 +61,8 @@ STOCK_API_URL = (
 DISCORD_WEBHOOK = st.secrets.get("DISCORD_WEBHOOK", "")
  
  
+
+ 
  
 # ATTENTION : pour Streamlit Community Cloud, un fichier SQLite local peut être perdu
 # lors d'un redémarrage. Utiliser un stockage persistant avant ouverture publique.
@@ -800,7 +802,7 @@ def envoyer_commande_discord(
     total_articles,
  
     total_general,
-    premiere_commande=False, telephone="", email="", creneau="", reference=""
+    premiere_commande=False, telephone="", reference=""
  
 ):
  
@@ -841,8 +843,8 @@ def envoyer_commande_discord(
         f"👤 **Client :** {nom_client}\n"
  
         f"📍 **Adresse :** {adresse_livraison}\n"
-         f"📞 **Téléphone :** {telephone}\n📧 **E-mail :** {email}\n"
-         f"📅 **Livraison :** {creneau}\n🔖 **Référence :** {reference}\n\n"
+         f"📞 **Téléphone :** {telephone}\n"
+         f"🔖 **Référence :** {reference}\n\n"
  
         "🛒 **Produits :**\n"
  
@@ -974,27 +976,15 @@ def initialiser_db():
             db.execute("ALTER TABLE commandes ADD COLUMN precision_lieu TEXT DEFAULT ''")
  
  
-def places_disponibles():
-    with db_conn() as db:
-        return db.execute("""SELECT c.id,c.jour,c.debut,c.fin,c.capacite, c.actif,
-        (SELECT COUNT(*) FROM commandes o WHERE o.creneau_id=c.id AND o.statut NOT IN ('annulée','livrée')) AS reservees
-        FROM creneaux c WHERE c.jour>=? AND c.actif=1 ORDER BY c.jour,c.debut""", (date.today().isoformat(),)).fetchall()
- 
- 
-def libelle_creneau(c):
-    return f"{c['jour']} · {c['debut']}–{c['fin']} ({c['capacite']-c['reservees']} place(s))"
- 
- 
 def reserver_commande(commande):
     with db_conn() as db:
-        db.execute("BEGIN IMMEDIATE")
-        c = db.execute("""SELECT c.id,c.capacite,c.actif,c.jour,
-          (SELECT COUNT(*) FROM commandes o WHERE o.creneau_id=c.id AND o.statut NOT IN ('annulée','livrée')) AS reservees
-          FROM creneaux c WHERE c.id=?""", (commande['creneau_id'],)).fetchone()
-        if not c or not c['actif'] or c['jour'] < date.today().isoformat() or c['reservees'] >= c['capacite']:
-            return False, 'Ce créneau vient de devenir indisponible.'
-        db.execute("""INSERT INTO commandes (id,cree_le,nom,telephone,email,adresse,creneau_id,panier_json,total_prevu,premiere_commande,mode_remise,precision_lieu)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""", (commande['id'],datetime.now().isoformat(timespec='seconds'),commande['nom'],commande['telephone'],commande['email'],commande['adresse'],commande['creneau_id'],json.dumps(commande['panier'],ensure_ascii=False),commande['total'],int(commande['premiere_commande']),commande['mode_remise'],commande['precision_lieu']))
+        db.execute("""INSERT INTO commandes
+          (id,cree_le,nom,telephone,email,adresse,creneau_id,panier_json,total_prevu,premiere_commande,mode_remise,precision_lieu)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+          (commande['id'],datetime.now().isoformat(timespec='seconds'),commande['nom'],
+           commande['telephone'],'',commande['adresse'],0,
+           json.dumps(commande['panier'],ensure_ascii=False),commande['total'],
+           int(commande['premiere_commande']),commande['mode_remise'],commande['precision_lieu']))
     return True, ''
  
  
@@ -1024,11 +1014,9 @@ def creer_recapitulatif_pdf(commande, lignes):
         ("Commande du", commande["cree_le"][:16].replace("T", " ")),
         ("Client", commande["nom"]),
         ("Téléphone", commande["telephone"]),
-        ("E-mail", commande["email"] or "Non renseigné"),
         ("Mode de remise", commande["mode_remise"]),
         ("Lieu proposé", commande["adresse"]),
         ("Précisions", commande["precision_lieu"] or "Aucune"),
-        ("Créneau demandé", f"{commande['jour']} de {commande['debut']} à {commande['fin']}"),
         ("Statut", commande["statut"]),
     ]
     for label, valeur in champs:
@@ -1058,7 +1046,7 @@ def creer_recapitulatif_pdf(commande, lignes):
     elements.append(Spacer(1, 16))
     elements.append(Paragraph(
         "<b>Information :</b> document récapitulatif, pas une facture acquittée. "
-        "Le lieu et l'horaire sont à confirmer par Sarah. Aucun paiement à l'avance. "
+        "Le lieu et l'horaire seront convenus directement avec Sarah. Aucun paiement à l'avance. "
         "Le client vérifie les articles lors de la remise et paie uniquement ceux conservés. "
         "Les éventuels frais de livraison sont à confirmer séparément.",
         styles["SarahTexte"]))
@@ -1072,14 +1060,8 @@ def prix_comparaison(article):
  
  
 def afficher_planning_public():
-    st.markdown('### 🚚 Planning de livraison')
-    st.caption('Consultez les disponibilités avant de faire vos achats. Choisissez votre créneau lors de la validation du panier.')
-    creneaux = [c for c in places_disponibles() if c['reservees'] < c['capacite']]
-    if not creneaux:
-        st.info('Les prochains créneaux seront publiés ici prochainement. 🌸')
-    else:
-        for c in creneaux[:12]:
-            st.write('🌸 ' + libelle_creneau(c))
+    st.markdown('### 🚚 Livraisons et points de rendez-vous')
+    st.info('Après votre commande, Sarah vous contactera par téléphone pour convenir du lieu et de l’horaire.')
  
  
 def afficher_admin():
@@ -1102,78 +1084,45 @@ def afficher_admin():
         if st.button('Se déconnecter',key='admin_logout'):
             st.session_state.admin_auth=False
             st.rerun()
-        tab1,tab2=st.tabs(['📅 Créneaux','📦 Commandes et clientes'])
-        with tab1:
-            with st.form('ajout_creneau'):
-                jour=st.date_input('Jour de livraison',min_value=date.today())
-                debut=st.time_input('Début',value=datetime.strptime('14:00','%H:%M').time())
-                fin=st.time_input('Fin',value=datetime.strptime('16:00','%H:%M').time())
-                capacite=st.number_input('Commandes maximum',min_value=1,max_value=100,value=3)
-                ajouter=st.form_submit_button('Ajouter ce créneau')
-            if ajouter:
-                if debut>=fin:
-                    st.error('La fin doit être après le début.')
-                else:
-                    try:
+        st.subheader('📦 Commandes et clientes')
+        with db_conn() as db:
+            commandes=db.execute("SELECT o.* FROM commandes o ORDER BY o.cree_le DESC LIMIT 200").fetchall()
+        for c in commandes:
+            with st.expander(f"{c['id']} · {c['nom']} · {c['statut']}"):
+                st.write(f"Téléphone : {c['telephone']}")
+                st.write(f"Mode de remise : {c['mode_remise']} · Lieu : {c['adresse']}")
+                if c['precision_lieu']:
+                    st.write(f"Précisions : {c['precision_lieu']}")
+                st.write(f"Total prévu : {c['total_prevu']:.2f} €")
+                lignes=json.loads(c['panier_json'])
+                st.download_button(
+                    "📄 Télécharger le récapitulatif PDF",
+                    data=creer_recapitulatif_pdf(c, lignes),
+                    file_name=f"Recapitulatif_commande_{c['id']}.pdf",
+                    mime="application/pdf",
+                    key=f"pdf_commande_{c['id']}",
+                )
+                if c['statut']=='réservée':
+                    with st.form('fin_'+c['id']):
+                        gardees={}
+                        for i,p in enumerate(lignes):
+                            gardees[i]=st.number_input(p['produit']+' — quantité gardée',min_value=0,max_value=int(p['quantite']),value=int(p['quantite']),key=f"garde_{c['id']}_{i}")
+                        montant=sum(gardees[i]*p['prix'] for i,p in enumerate(lignes))
+                        st.write(f"Montant à encaisser pour les articles gardés : **{montant:.2f} €**")
+                        confirmer=st.form_submit_button('✅ Livraison terminée et montant encaissé')
+                    if confirmer:
                         with db_conn() as db:
-                            db.execute('INSERT INTO creneaux (jour,debut,fin,capacite) VALUES (?,?,?,?)',(jour.isoformat(),debut.strftime('%H:%M'),fin.strftime('%H:%M'),int(capacite)))
-                        st.success('Créneau créé.')
-                        st.rerun()
-                    except sqlite3.IntegrityError:
-                        st.warning('Ce créneau existe déjà.')
-            with db_conn() as db:
-                rows=db.execute('SELECT * FROM creneaux WHERE jour>=? ORDER BY jour,debut',(date.today().isoformat(),)).fetchall()
-            for c in rows:
-                a,b,d=st.columns([4,2,2])
-                a.write(f"{c['jour']} {c['debut']}–{c['fin']} · max {c['capacite']} · {'ouvert' if c['actif'] else 'fermé'}")
-                if b.button('Fermer' if c['actif'] else 'Ouvrir',key=f"toggle_{c['id']}"):
-                    with db_conn() as db:
-                        db.execute('UPDATE creneaux SET actif=? WHERE id=?',(0 if c['actif'] else 1,c['id']))
-                    st.rerun()
-                nouvelle_cap=d.number_input('Places',min_value=1,max_value=100,value=c['capacite'],key=f"cap_{c['id']}")
-                if nouvelle_cap != c['capacite']:
-                    with db_conn() as db:
-                        db.execute('UPDATE creneaux SET capacite=? WHERE id=?',(int(nouvelle_cap),c['id']))
-                    st.rerun()
-        with tab2:
-            with db_conn() as db:
-                commandes=db.execute("SELECT o.*,c.jour,c.debut,c.fin FROM commandes o LEFT JOIN creneaux c ON c.id=o.creneau_id ORDER BY o.cree_le DESC LIMIT 200").fetchall()
-            for c in commandes:
-                with st.expander(f"{c['id']} · {c['nom']} · {c['jour']} {c['debut']} · {c['statut']}"):
-                    st.write(f"Téléphone : {c['telephone']} | E-mail : {c['email'] or 'non fourni'}")
-                    st.write(f"Mode de remise : {c['mode_remise']} · Lieu : {c['adresse']}")
-                    if c['precision_lieu']:
-                        st.write(f"Précisions : {c['precision_lieu']}")
-                    st.write(f"Total prévu : {c['total_prevu']:.2f} €")
-                    lignes=json.loads(c['panier_json'])
-                    st.download_button(
-                        "📄 Télécharger le récapitulatif PDF",
-                        data=creer_recapitulatif_pdf(c, lignes),
-                        file_name=f"Recapitulatif_commande_{c['id']}.pdf",
-                        mime="application/pdf",
-                        key=f"pdf_commande_{c['id']}",
-                    )
-                    if c['statut']=='réservée':
-                        with st.form('fin_'+c['id']):
-                            gardees={}
+                            db.execute("UPDATE commandes SET statut='livrée',montant_encaisse=? WHERE id=? AND statut='réservée'",(montant,c['id']))
                             for i,p in enumerate(lignes):
-                                gardees[i]=st.number_input(p['produit']+' — quantité gardée',min_value=0,max_value=int(p['quantite']),value=int(p['quantite']),key=f"garde_{c['id']}_{i}")
-                            montant=sum(gardees[i]*p['prix'] for i,p in enumerate(lignes))
-                            st.write(f"Montant à encaisser pour les articles gardés : **{montant:.2f} €**")
-                            confirmer=st.form_submit_button('✅ Livraison terminée et montant encaissé')
-                        if confirmer:
-                            with db_conn() as db:
-                                db.execute("UPDATE commandes SET statut='livrée',montant_encaisse=? WHERE id=? AND statut='réservée'",(montant,c['id']))
-                                for i,p in enumerate(lignes):
-                                    db.execute('INSERT OR REPLACE INTO lignes_livrees VALUES (?,?,?)',(c['id'],p['produit'],gardees[i]))
-                            st.success('Livraison enregistrée. Les articles refusés doivent être réintégrés manuellement au stock Google Sheets.')
-                            st.rerun()
-                        if st.button('Annuler la réservation',key='cancel_'+c['id']):
-                            annuler_reservation(c['id'])
-                            st.warning('Réservation annulée. Vérifiez manuellement le stock.')
-                            st.rerun()
-                    else:
-                        st.write(f"Montant encaissé : {c['montant_encaisse'] if c['montant_encaisse'] is not None else '—'}")
+                                db.execute('INSERT OR REPLACE INTO lignes_livrees VALUES (?,?,?)',(c['id'],p['produit'],gardees[i]))
+                        st.success('Livraison enregistrée. Les articles refusés doivent être réintégrés manuellement au stock Google Sheets.')
+                        st.rerun()
+                    if st.button('Annuler la réservation',key='cancel_'+c['id']):
+                        annuler_reservation(c['id'])
+                        st.warning('Réservation annulée. Vérifiez manuellement le stock.')
+                        st.rerun()
+                else:
+                    st.write(f"Montant encaissé : {c['montant_encaisse'] if c['montant_encaisse'] is not None else '—'}")
  
 initialiser_db()
  
@@ -1311,14 +1260,8 @@ def afficher_sidebar_complete():
  
  
             precision_lieu = st.text_input('Précisions pour se retrouver (facultatif)', key='precision_lieu_client')
-            st.caption('Le lieu et le créneau seront confirmés par Sarah avant le rendez-vous.')
+            st.caption('Sarah vous contactera par téléphone pour convenir du lieu et de l’horaire.')
             telephone_client = st.text_input('Téléphone pour organiser la livraison *', key='client_tel')
-            email_client = st.text_input('E-mail (pour recevoir votre confirmation)', key='client_email')
-            disponibles = [c for c in places_disponibles() if c['reservees'] < c['capacite']]
-            choix = {libelle_creneau(c): c for c in disponibles}
-            creneau_choisi = st.selectbox('📅 Choisissez votre créneau de livraison *', list(choix), index=None, placeholder='Sélectionnez un créneau') if choix else None
-            if not choix:
-                st.warning('Aucun créneau ouvert pour le moment. Revenez bientôt !')
             st.caption('Aucun paiement à l’avance. À la remise, vérifiez les articles et ne payez que ceux que vous gardez.')
             premiere_commande = st.checkbox(
                 "🎁 C'est ma première commande : je souhaite bénéficier de la livraison offerte",
@@ -1341,7 +1284,6 @@ def afficher_sidebar_complete():
  
                     or adresse_livraison.strip() == ""
                     or not telephone_client.strip()
-                    or not creneau_choisi
  
                 ):
  
@@ -1349,7 +1291,7 @@ def afficher_sidebar_complete():
  
                         "Veuillez remplir votre nom et "
  
-                        "votre adresse, votre téléphone et un créneau pour valider."
+                        "votre adresse et votre téléphone pour valider."
  
                     )
  
@@ -1386,9 +1328,9 @@ def afficher_sidebar_complete():
                         total_general=sum(p['prix']*p['quantite'] for p in panier_commande)
                         ref=secrets.token_hex(6).upper()
                         commande={'id':ref,'nom':nom_client.strip(),'telephone':telephone_client.strip(),
-                          'email':email_client.strip(),'adresse':adresse_livraison.strip(),
+                          'adresse':adresse_livraison.strip(),
                           'mode_remise':mode_remise,'precision_lieu':precision_lieu.strip(),
-                          'creneau_id':choix[creneau_choisi]['id'],'panier':panier_commande,
+                          'panier':panier_commande,
                           'total':total_general,'premiere_commande':premiere_commande}
                         reserve,erreur=reserver_commande(commande)
                         if not reserve:
@@ -1396,8 +1338,7 @@ def afficher_sidebar_complete():
                         else:
                             discord_ok,discord_erreur=envoyer_commande_discord(
                               commande['nom'],f"{commande['mode_remise']} — {commande['adresse']} — {commande['precision_lieu']}",panier_commande,total_general,
-                              total_general,premiere_commande,telephone_client,email_client,
-                              creneau_choisi,ref)
+                              total_general,premiere_commande,telephone_client,ref)
                             if not discord_ok:
                                 annuler_reservation(ref)
                                 st.error('Réservation annulée : notification boutique impossible. '+discord_erreur)
@@ -1412,7 +1353,7 @@ def afficher_sidebar_complete():
                                     st.session_state.confirmation_commande={
                                       'nombre':sum(p['quantite'] for p in panier_commande),
                                       'total':total_general,'livraison_demandee':premiere_commande,
-                                      'reference':ref,'creneau':creneau_choisi,
+                                      'reference':ref,
                                       'lieu':commande['adresse'],'mode_remise':mode_remise}
                                     st.session_state.animation_confirmation=True
                                     vider_panier()
@@ -1444,10 +1385,10 @@ if st.session_state.confirmation_commande:
     </div>
     """, unsafe_allow_html=True)
     st.success(f"✅ Confirmation : {recap['nombre']} article(s) — Total : {recap['total']:.2f} €")
-    st.info(f"📅 Créneau demandé : {recap.get('creneau','—')} · 📍 {recap.get('mode_remise','')} : {recap.get('lieu','')} · Référence : {recap.get('reference','—')}")
+    st.info(f"📍 {recap.get('mode_remise','')} : {recap.get('lieu','')} · Référence : {recap.get('reference','—')}")
     if recap.get("livraison_demandee"):
         st.info("🎁 Votre demande de livraison offerte a été transmise. Sarah vérifiera votre éligibilité et vous confirmera les modalités.")
-    st.info("La boutique a reçu votre demande. Sarah confirmera le lieu et le créneau avant le rendez-vous.")
+    st.info("La boutique a reçu votre demande. Sarah vous contactera pour convenir du lieu et de l’horaire.")
     if st.session_state.animation_confirmation:
         st.balloons()
         st.session_state.animation_confirmation = False
@@ -1494,7 +1435,7 @@ if page == '🏠 Accueil':
     """, unsafe_allow_html=True)
  
     st.markdown("### 🛍️ Vos produits à petits prix")
-    st.caption("Parcourez la boutique, ajoutez vos articles au panier, puis choisissez votre créneau et votre lieu de rendez-vous.")
+    st.caption("Parcourez la boutique, ajoutez vos articles au panier, puis indiquez votre lieu de livraison ou de rendez-vous.")
     st.button("Découvrir les produits 🌸", width="stretch", on_click=ouvrir_boutique)
 elif page == "💝 Liste de souhaits":
     st.title("💝 Votre liste de souhaits")
@@ -1502,7 +1443,7 @@ elif page == "💝 Liste de souhaits":
         st.write("Vous cherchez un article absent du catalogue ? Envoyez votre liste. Sarah recherchera les produits et vous répondra avec les prix et disponibilités, sans obligation d'achat.")
         with st.form("form_liste_courses", clear_on_submit=True):
             nom_recherche = st.text_input("Votre prénom et nom", max_chars=100)
-            contact_recherche = st.text_input("Votre téléphone ou e-mail pour recevoir une réponse", max_chars=150)
+            contact_recherche = st.text_input("Votre téléphone pour recevoir une réponse", max_chars=150)
             liste_recherche = st.text_area("Produits recherchés (marque, format, quantité si possible)", placeholder="Ex. Ariel 40 lavages, shampoing Garnier...", max_chars=1100)
             accord_contact = st.checkbox("J'accepte que mes coordonnées soient utilisées pour répondre à ma demande.")
             soumettre_recherche = st.form_submit_button("💌 Envoyer ma liste à Sarah", width="stretch")
@@ -1517,7 +1458,7 @@ elif page == "💝 Liste de souhaits":
                     st.error("Votre demande n'a pas pu être envoyée : " + erreur)
 elif page == "🚚 Livraisons":
     afficher_planning_public()
-    st.info("Au moment de valider le panier, choisissez un créneau d'une heure et proposez un lieu de rendez-vous. Sarah confirmera le lieu et l'horaire.")
+    
 elif page == "🔐 Administration":
     afficher_admin()
 elif page == "🛍️ Boutique":
