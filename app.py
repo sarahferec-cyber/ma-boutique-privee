@@ -447,7 +447,7 @@ def categories_produit(article):
     categories = []
     for valeur in re.split(r"[,;]", brut):
         categorie = valeur.strip()
-     if normaliser_texte(categorie) in ("alimentaire", "alimentation"):
+ if normaliser_texte(categorie) in ("alimentaire", "alimentation"):
             categorie = "Alimentation"        if categorie and normaliser_texte(categorie) not in [normaliser_texte(c) for c in categories]:
             categories.append(categorie)
     return categories or ["Autre"]
