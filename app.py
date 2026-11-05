@@ -1603,7 +1603,7 @@ elif page == "🛍️ Boutique":
  
                         st.image(
  
-                            lien_photo = photo_produit(row)
+                            lien_photo = photo_produit(row))
 
                     if lien_photo:
                         st.image(
