@@ -1603,27 +1603,20 @@ elif page == "🛍️ Boutique":
  
                         st.image(
  
-                            lien_photo,
- 
-                            width="stretch"
- 
-                        )
- 
-                    else:
- 
+                            lien_photo = photo_produit(row)
+
+                    if lien_photo:
                         st.image(
- 
-                            "https://via.placeholder.com/"
- 
-                            "150?text=Pas+de+photo",
- 
+                            lien_photo,
                             width="stretch"
- 
                         )
- 
- 
- 
-                                        st.markdown(
+                    else:
+                        st.image(
+                            "https://via.placeholder.com/150?text=Pas+de+photo",
+                            width="stretch"
+                        )
+
+                    st.markdown(
                         f"**{nom_produit(row)}**"
                     )
 
