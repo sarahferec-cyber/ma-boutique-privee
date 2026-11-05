@@ -3597,6 +3597,4 @@ elif page == "🛍️ Boutique":
 
         )
 
-Mes Bons Plans de Sarah · Code app.py
-
 
