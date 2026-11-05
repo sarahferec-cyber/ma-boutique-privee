@@ -443,18 +443,18 @@ def categories_produit(article):
     """Sépare et harmonise les catégories des produits."""
     brut = categorie_produit(article)
     categories = []
-
+ 
     for valeur in re.split(r"[,;]", brut):
         categorie = valeur.strip()
-
+ 
         if normaliser_texte(categorie) in ("alimentaire", "alimentation"):
             categorie = "Alimentation"
-
+ 
         if categorie and normaliser_texte(categorie) not in [
             normaliser_texte(c) for c in categories
         ]:
             categories.append(categorie)
-
+ 
     return categories or ["Autre"]
  
  
@@ -595,41 +595,46 @@ def format_produit(article):
  
  
 def prix_kg_litre(article):
+    """Prix unitaire basé sur le prix réellement affiché et le format du produit."""
+    prix_promo = obtenir_prix_promo(article)
+    prix = prix_promo if prix_promo is not None else obtenir_prix(article)
+    format_texte = format_produit(article)
+    # Formats courants : 250 g, 1,7 L, 750 ml, 2 x 500 g.
+    texte = normaliser_texte(format_texte).replace(",", ".")
+    motif = r"(\d+(?:\.\d+)?)\s*(kg|kilogrammes?|gr|grammes?|g|litres?|l|ml|cl)\b"
+    correspondance = re.search(motif, texte)
+    if correspondance and prix > 0:
+        quantite = float(correspondance.group(1))
+        unite = correspondance.group(2)
+        multiplicateur = re.search(r"(\d+)\s*[x×]\s*$", texte[:correspondance.start()])
+        if multiplicateur:
+            quantite *= int(multiplicateur.group(1))
+        if unite in ("g", "gr", "gramme", "grammes"):
+            quantite /= 1000
+            unite_finale = "kg"
+        elif unite == "kg" or unite.startswith("kilogramme"):
+            unite_finale = "kg"
+        elif unite == "ml":
+            quantite /= 1000
+            unite_finale = "L"
+        elif unite == "cl":
+            quantite /= 100
+            unite_finale = "L"
+        else:
+            unite_finale = "L"
+        if quantite > 0:
+            return f"{prix / quantite:.2f}".replace(".", ",") + f" €/{unite_finale}"
  
-    colonne = trouver_colonne(
- 
-        article,
- 
-        [
- 
-            "Prix au Kg / Litre",
- 
-            "Prix au Kg/Litre",
- 
-            "Prix Kg",
- 
-            "Prix Litre",
- 
-            "Prix au kilo",
- 
-            "Prix au litre"
- 
-        ]
- 
-    )
- 
-    return (
- 
-        str(article.get(colonne, "")).strip()
- 
-        if colonne and not pd.isna(article.get(colonne))
- 
-        else ""
- 
-    )
- 
- 
- 
+    # Si le format ne permet pas de calculer, reprendre une valeur déjà renseignée.
+    colonne = trouver_colonne(article, [
+        "Prix au Kg / Litre", "Prix au Kg/Litre", "Prix Kg",
+        "Prix Litre", "Prix au kilo", "Prix au litre"
+    ])
+    if colonne and not pd.isna(article.get(colonne)):
+        valeur = str(article.get(colonne, "")).strip()
+        if valeur and valeur.lower() != "nan":
+            return valeur
+    return ""
  
  
 @st.cache_data(ttl=60)
@@ -1603,27 +1608,39 @@ elif page == "🛍️ Boutique":
  
                         st.image(
  
-                            lien_photo = photo_produit(row))
-
-                    if lien_photo:
-                        st.image(
                             lien_photo,
+ 
                             width="stretch"
+ 
                         )
+ 
                     else:
+ 
                         st.image(
-                            "https://via.placeholder.com/150?text=Pas+de+photo",
+ 
+                            "https://via.placeholder.com/"
+ 
+                            "150?text=Pas+de+photo",
+ 
                             width="stretch"
+ 
                         )
-
+ 
+ 
+ 
                     st.markdown(
+ 
                         f"**{nom_produit(row)}**"
+ 
                     )
-
-                    st.caption(
-                        f"📦 Format : {format_produit(row)}"
-                    )
-
+ 
+ 
+ 
+                    if format_produit(row):
+                        st.caption(f"📦 Format : {format_produit(row)}")
+ 
+ 
+ 
                     prix_init = obtenir_prix(row)
  
  
@@ -1635,55 +1652,45 @@ elif page == "🛍️ Boutique":
                     prix_pr = obtenir_prix_promo(row)
  
  
-
+ 
                     stock_dispo = obtenir_stock(row)
-
-                    prix_comp = prix_comparaison(row)
-                    prix_vente = prix_pr if prix_pr is not None else prix_init
-
+ 
+ 
+ 
+                    prix_comp=prix_comparaison(row)
+                    prix_vente=prix_pr if prix_pr is not None else prix_init
                     if prix_comp > prix_vente > 0:
-                        economie = prix_comp - prix_vente
-                        pct = 100 * economie / prix_comp
-                        st.caption(
-                            f"💚 Comparaison indicative : {economie:.2f} € de moins "
-                            f"({pct:.0f} %) qu'un prix constaté de {prix_comp:.2f} € "
-                            "— source et date à vérifier."
-                        )
-
+                        economie=prix_comp-prix_vente
+                        pct=100*economie/prix_comp
+                        st.caption(f"💚 Comparaison indicative : {economie:.2f} € de moins ({pct:.0f} %) qu'un prix constaté de {prix_comp:.2f} € — source et date à vérifier.")
                     if prix_pr is not None:
+ 
                         st.markdown(
+ 
                             f"~~{prix_init:.2f} €~~ "
+ 
                             f"🔴 **PROMO : {prix_pr:.2f} €**"
+ 
                         )
+ 
                     else:
+ 
                         st.markdown(
+ 
                             f"Prix : **{prix_init:.2f} €**"
+ 
                         )
-
-                    # Affichage du prix au kilo ou au litre
+ 
+ 
+ 
                     prix_unitaire = prix_kg_litre(row)
-
                     if prix_unitaire:
-                        st.caption(
-                            f"⚖️ Prix au kilo / litre : {prix_unitaire}"
-                        )
- 
-                        st.markdown(
- 
-                            f"Prix : **{prix_init:.2f} €**"
- 
-                        )
- 
+                        st.caption(f"⚖️ Prix au kilo / litre : **{prix_unitaire}**")
  
  
                     if stock_dispo <= 0:
  
                         st.error("🚫 Rupture de stock")
-                    else:
-                      
-                      st.markdown(
-        f"Prix : **{prix_init:.2f} €**"
-    )
  
  
  
