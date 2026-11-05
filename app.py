@@ -1623,18 +1623,14 @@ elif page == "🛍️ Boutique":
  
  
  
-                    st.markdown(
- 
+                                        st.markdown(
                         f"**{nom_produit(row)}**"
- 
                     )
-                 
-                 st.caption(
+
+                    st.caption(
                         f"📦 Format : {format_produit(row)}"
                     )
- 
- 
- 
+
                     prix_init = obtenir_prix(row)
  
  
