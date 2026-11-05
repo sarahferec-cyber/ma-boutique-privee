@@ -1631,13 +1631,7 @@ elif page == "🛍️ Boutique":
  
  
  
-                    st.caption(
- 
-                        f"Format : {format_produit(row)} "
- 
-                        f"| {prix_kg_litre(row)}"
- 
-                    )
+                   st.caption(f"📦 Format : {format_produit(row)}") 
  
  
  
@@ -1664,6 +1658,10 @@ elif page == "🛍️ Boutique":
                         pct=100*economie/prix_comp
                         st.caption(f"💚 Comparaison indicative : {economie:.2f} € de moins ({pct:.0f} %) qu'un prix constaté de {prix_comp:.2f} € — source et date à vérifier.")
                     if prix_pr is not None:
+                     prix_unitaire = prix_kg_litre(row)
+                     
+                     if prix_unitaire:
+                      st.caption(f"⚖️ Prix au kilo / litre : {prix_unitaire}")
  
                         st.markdown(
  
@@ -1686,6 +1684,11 @@ elif page == "🛍️ Boutique":
                     if stock_dispo <= 0:
  
                         st.error("🚫 Rupture de stock")
+                     else:
+                      
+                      st.markdown(
+        f"Prix : **{prix_init:.2f} €**"
+    )
  
  
  
