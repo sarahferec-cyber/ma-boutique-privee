@@ -1631,7 +1631,7 @@ elif page == "🛍️ Boutique":
  
  
  
-                                       st.caption(
+                     st.caption(
                         f"📦 Format : {format_produit(row)}"
                     )
  
