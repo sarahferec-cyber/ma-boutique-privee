@@ -1679,7 +1679,7 @@ elif page == "🛍️ Boutique":
                     if stock_dispo <= 0:
  
                         st.error("🚫 Rupture de stock")
-                     else:
+                    else:
                       
                       st.markdown(
         f"Prix : **{prix_init:.2f} €**"
