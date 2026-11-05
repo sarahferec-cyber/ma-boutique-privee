@@ -1635,8 +1635,8 @@ elif page == "🛍️ Boutique":
                     prix_pr = obtenir_prix_promo(row)
  
  
- 
-                                        stock_dispo = obtenir_stock(row)
+
+                    stock_dispo = obtenir_stock(row)
 
                     prix_comp = prix_comparaison(row)
                     prix_vente = prix_pr if prix_pr is not None else prix_init
