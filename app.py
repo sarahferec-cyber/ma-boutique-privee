@@ -67,7 +67,7 @@ from reportlab.lib.pagesizes import A4
 
  
 
-NOM_BOUTIQUE = "Mes Bons Plans de Sarah 🌸"
+NOM_BOUTIQUE = "Les Bons Plans de Sarah 🌸"
 
  
 
@@ -79,7 +79,7 @@ GOOGLE_SHEET_URL = (
 
  
 
-    "https://docs.google.com/spreadsheets/d/1Vr03yyls7sJR6Ro_9UMci3hvGz1YT8bm/edit?usp=sharing&ouid=114412569551936507416&rtpof=true&sd=true"
+    "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7e"
 
  
 
