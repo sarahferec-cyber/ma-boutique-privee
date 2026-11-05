@@ -1636,31 +1636,37 @@ elif page == "🛍️ Boutique":
  
  
  
-                    stock_dispo = obtenir_stock(row)
- 
- 
- 
-                    prix_comp=prix_comparaison(row)
-                    prix_vente=prix_pr if prix_pr is not None else prix_init
+                                        stock_dispo = obtenir_stock(row)
+
+                    prix_comp = prix_comparaison(row)
+                    prix_vente = prix_pr if prix_pr is not None else prix_init
+
                     if prix_comp > prix_vente > 0:
-                        economie=prix_comp-prix_vente
-                        pct=100*economie/prix_comp
-                        st.caption(f"💚 Comparaison indicative : {economie:.2f} € de moins ({pct:.0f} %) qu'un prix constaté de {prix_comp:.2f} € — source et date à vérifier.")
-                    if prix_pr is not None:
-                     prix_unitaire = prix_kg_litre(row)
-                     
-                     if prix_unitaire:
-                      st.caption(f"⚖️ Prix au kilo / litre : {prix_unitaire}")
- 
-                        st.markdown(
- 
-                            f"~~{prix_init:.2f} €~~ "
- 
-                            f"🔴 **PROMO : {prix_pr:.2f} €**"
- 
+                        economie = prix_comp - prix_vente
+                        pct = 100 * economie / prix_comp
+                        st.caption(
+                            f"💚 Comparaison indicative : {economie:.2f} € de moins "
+                            f"({pct:.0f} %) qu'un prix constaté de {prix_comp:.2f} € "
+                            "— source et date à vérifier."
                         )
- 
+
+                    if prix_pr is not None:
+                        st.markdown(
+                            f"~~{prix_init:.2f} €~~ "
+                            f"🔴 **PROMO : {prix_pr:.2f} €**"
+                        )
                     else:
+                        st.markdown(
+                            f"Prix : **{prix_init:.2f} €**"
+                        )
+
+                    # Affichage du prix au kilo ou au litre
+                    prix_unitaire = prix_kg_litre(row)
+
+                    if prix_unitaire:
+                        st.caption(
+                            f"⚖️ Prix au kilo / litre : {prix_unitaire}"
+                        )
  
                         st.markdown(
  
