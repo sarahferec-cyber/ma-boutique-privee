@@ -91,19 +91,7 @@ GOOGLE_SHEET_URL = (
 
  
 
-STOCK_API_URL = (
-
- 
-
-    "https://script.google.com/macros/s/"
-
- 
-
-    "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit?usp=sharing"
-
- 
-
-)
+STOCK_API_URL = st.secrets["STOCK_API_URL"]
 
  
 
