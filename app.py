@@ -75,15 +75,7 @@ NOM_BOUTIQUE = "Les Bons Plans de Sarah 🌸"
 
  
 
-GOOGLE_SHEET_URL = (
-
- 
-
-    "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7e"
-
- 
-
-)
+GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1ZtcJ0Wz9mZcqbyd_jnT33_Q7ebfRhgPLddRUWi7NjYA/edit"
 
  
 
