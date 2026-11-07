@@ -1,4 +1,5 @@
 
+
 import streamlit as st
 
 import pandas as pd
@@ -655,7 +656,25 @@ def afficher_panier():
 
                with db_conn() as db:
 
-                   db.execute('INSERT INTO commandes (id,cree_le,nom,telephone,adresse,mode_remise,precision_lieu,panier_json,total_prevu,premiere_commande) VALUES (?,?,?,?,?,?,?,?,?,?)', (ref, datetime.now().isoformat(timespec='seconds'), nom.strip(), telephone.strip(), adresse.strip(), mode, precision.strip(), json.dumps(commande_panier, ensure_ascii=False), total, int(premiere)))
+                   champs = ['id', 'cree_le', 'nom', 'telephone', 'adresse', 'mode_remise', 'precision_lieu', 'panier_json', 'total_prevu', 'premiere_commande']
+
+                   valeurs = [ref, datetime.now().isoformat(timespec='seconds'), nom.strip(), telephone.strip(), adresse.strip(), mode, precision.strip(), json.dumps(commande_panier, ensure_ascii=False), total, int(premiere)]
+
+                   # Compatibilite avec l'ancienne base qui exige encore creneau_id.
+
+                   colonnes_db = {ligne['name'] for ligne in db.execute('PRAGMA table_info(commandes)')}
+
+                   if 'creneau_id' in colonnes_db:
+
+                       champs.append('creneau_id')
+
+                       valeurs.append(0)  # Ancien champ technique, sans creneau reel.
+
+                   noms_sql = ', '.join(champs)
+
+                   marqueurs = ', '.join('?' for _ in valeurs)
+
+                   db.execute(f'INSERT INTO commandes ({noms_sql}) VALUES ({marqueurs})', valeurs)
 
                lignes = '\n'.join(f"• {p['produit']} × {p['quantite']} — {p['quantite']*p['prix']:.2f} €" for p in commande_panier)
 
