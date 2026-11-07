@@ -394,12 +394,26 @@ else:
     categories = sorted({c for _, a in df.iterrows() for c in categories_produit(a)}, key=normaliser_texte)
        if df.empty:
            st.warning('Aucun produit dans CampoStore.')
-       else:
-           categories = sorted({c for _, a in df.iterrows() for c in categories_produit(a)}, key=normaliser_texte)
-           categories = ['Tous'] + categories
-           recherche = st.text_input('🔎 Rechercher un produit')
-           categorie = st.selectbox('📁 Rayon', categories)
-           filtre = df
+       
+else:
+    st.title('🛍️ La boutique')
+    try:
+        df = charger_produits()
+
+        if df.empty:
+            st.warning('Aucun produit dans CampoStore.')
+        else:
+            categories = sorted(
+                {c for _, a in df.iterrows() for c in categories_produit(a)},
+                key=normaliser_texte
+            )
+            categories = ['Tous'] + categories
+
+            recherche = st.text_input('🔎 Rechercher un produit')
+            categorie = st.selectbox('📁 Rayon', categories)
+
+            filtre = df
+
            if categorie != 'Tous':
                filtre = filtre[filtre.apply(lambda a: categorie in categories_produit(a), axis=1)]
            if recherche.strip():
