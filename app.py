@@ -387,8 +387,11 @@ else:
    st.title('🛍️ La boutique')
    try:
        df = charger_produits()
-       st.write("TEST COLONNES :", df.columns.tolist())
-       st.write("TEST PRIX :", df[['Denomination', 'Prix initial', 'Prix promo']].head(5))
+       df = charger_produits()
+if df.empty:
+    st.warning('Aucun produit dans CampoStore.')
+else:
+    categories = sorted({c for _, a in df.iterrows() for c in categories_produit(a)}, key=normaliser_texte)
        if df.empty:
            st.warning('Aucun produit dans CampoStore.')
        else:
