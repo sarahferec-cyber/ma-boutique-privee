@@ -387,6 +387,8 @@ else:
    st.title('🛍️ La boutique')
    try:
        df = charger_produits()
+             st.write("TEST COLONNES :", df.columns.tolist())
+       st.write("TEST PRIX :", df[['Prix initial', 'Prix promo']].tail(5))
        if df.empty:
            st.warning('Aucun produit dans CampoStore.')
        else:
