@@ -1,8 +1,3 @@
-Mes Bons Plans de Sarah — code app.py corrigé
-
-Copier uniquement le code ci-dessous dans app.py sur GitHub. Les clés et mots de passe doivent rester dans Streamlit Secrets, jamais dans GitHub.
-
-Correction : indentation du catalogue, vérification de syntaxe Python et suppression des identifiants intégrés au code. Le fonctionnement du retrait de stock devra être testé séparément.
 
 import streamlit as st
 
